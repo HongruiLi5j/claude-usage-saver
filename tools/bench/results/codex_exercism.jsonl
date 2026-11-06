@@ -1,0 +1,15 @@
+{"slug": "scale-generator", "arm": "codex", "ok": 1, "rc": 0, "inp": 91583, "cached": 70016, "out": 751, "reason": 25, "turns": 1, "dur": 19, "note": ""}
+{"slug": "robot-simulator", "arm": "codex", "ok": 1, "rc": 0, "inp": 90288, "cached": 70144, "out": 698, "reason": 23, "turns": 1, "dur": 18, "note": ""}
+{"slug": "flatten-array", "arm": "codex", "ok": 1, "rc": 0, "inp": 87964, "cached": 78976, "out": 557, "reason": 63, "turns": 1, "dur": 18, "note": ""}
+{"slug": "largest-series-product", "arm": "codex", "ok": 1, "rc": 0, "inp": 111263, "cached": 92672, "out": 583, "reason": 44, "turns": 1, "dur": 19, "note": ""}
+{"slug": "transpose", "arm": "codex", "ok": 1, "rc": 0, "inp": 89616, "cached": 79872, "out": 933, "reason": 389, "turns": 1, "dur": 25, "note": ""}
+{"slug": "square-root", "arm": "codex", "ok": 1, "rc": 0, "inp": 108096, "cached": 83968, "out": 499, "reason": 35, "turns": 1, "dur": 18, "note": ""}
+{"slug": "book-store", "arm": "codex", "ok": 1, "rc": 0, "inp": 89022, "cached": 65024, "out": 703, "reason": 81, "turns": 1, "dur": 17, "note": ""}
+{"slug": "markdown", "arm": "codex", "ok": 1, "rc": 0, "inp": 140962, "cached": 129920, "out": 1419, "reason": 137, "turns": 1, "dur": 32, "note": ""}
+{"slug": "palindrome-products", "arm": "codex", "ok": 1, "rc": 0, "inp": 115888, "cached": 104960, "out": 1391, "reason": 350, "turns": 1, "dur": 35, "note": ""}
+{"slug": "pig-latin", "arm": "codex", "ok": 1, "rc": 0, "inp": 109236, "cached": 99968, "out": 593, "reason": 33, "turns": 1, "dur": 18, "note": ""}
+{"slug": "atbash-cipher", "arm": "codex", "ok": 1, "rc": 0, "inp": 108787, "cached": 91008, "out": 500, "reason": 0, "turns": 1, "dur": 16, "note": ""}
+{"slug": "protein-translation", "arm": "codex", "ok": 1, "rc": 0, "inp": 114318, "cached": 103680, "out": 708, "reason": 41, "turns": 1, "dur": 20, "note": ""}
+{"slug": "perfect-numbers", "arm": "codex", "ok": 1, "rc": 0, "inp": 112947, "cached": 102784, "out": 694, "reason": 63, "turns": 1, "dur": 20, "note": ""}
+{"slug": "word-count", "arm": "codex", "ok": 1, "rc": 0, "inp": 114685, "cached": 103552, "out": 667, "reason": 82, "turns": 1, "dur": 25, "note": ""}
+{"slug": "dnd-character", "arm": "codex", "ok": 1, "rc": 1, "inp": 0, "cached": 0, "out": 0, "reason": 0, "turns": 0, "dur": 22, "note": ""}

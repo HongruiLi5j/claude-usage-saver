@@ -1,0 +1,40 @@
+[
+ {
+  "ts": "2026-11-06T09:31:53.635176+00:00",
+  "before": {
+   "days": 15,
+   "cost_per_day": 37.63027186333337,
+   "calls_per_day": 1273.0666666666666,
+   "cost_per_call": 29.558759842375395,
+   "median_ctx": 140457,
+   "opus_share": 58.444915678193084
+  },
+  "recent": {
+   "days": 1,
+   "cost_per_day": 9.806560449999996,
+   "calls_per_day": 421.0,
+   "cost_per_call": 23.293492755344406,
+   "median_ctx": 109899,
+   "opus_share": 19.706217688180367
+  }
+ },
+ {
+  "ts": "2026-11-06T09:53:15.883530+00:00",
+  "before": {
+   "days": 15,
+   "cost_per_day": 40.862184413333374,
+   "calls_per_day": 1273.0666666666666,
+   "cost_per_call": 32.09744272098872,
+   "median_ctx": 140457,
+   "opus_share": 57.46641606937152
+  },
+  "recent": {
+   "days": 1,
+   "cost_per_day": 12.888003849999993,
+   "calls_per_day": 556.0,
+   "cost_per_call": 23.179863039568335,
+   "median_ctx": 96812,
+   "opus_share": 31.985485479196218
+  }
+ }
+]

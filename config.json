@@ -1,0 +1,3 @@
+{"handoff_threshold_tokens": 160000,
+ "strong_threshold_tokens": 300000,
+ "per_project_threshold_tokens": {"quant-backtest": 250000, "AQ-sandbox": 250000, "AQ-o44": 250000}}

@@ -1,0 +1,11 @@
+# local runtime state and private data
+state/
+backups/
+_to_delete/
+HANDOFF.md
+tools/bench/results/*.log
+__pycache__/
+*.pyc
+.DS_Store
+.secret/
+drafts/
