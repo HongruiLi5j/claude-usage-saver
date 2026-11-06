@@ -1,3 +1,12 @@
-{"handoff_threshold_tokens": 160000,
+{
+ "handoff_threshold_tokens": 160000,
  "strong_threshold_tokens": 300000,
- "per_project_threshold_tokens": {"quant-backtest": 250000, "AQ-sandbox": 250000, "AQ-o44": 250000}}
+ "per_project_threshold_tokens": {
+  "quant-backtest": 250000,
+  "AQ-sandbox": 250000,
+  "AQ-o44": 250000
+ },
+ "cap_from_date": "2026-11-21",
+ "max_soft_line_tokens": 180000,
+ "max_strong_line_tokens": 195000
+}

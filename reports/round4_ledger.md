@@ -1,0 +1,26 @@
+# 第 4 轮任务账（配对制：每项 = 实施者 + 独立复核者）
+
+规则：
+- 实施者交付后，必须由**另一个** agent（优先 Codex，跨模型更独立）复核；复核者要亲自重跑证据（测试/命令），不能只读报告。
+- 复核结论只有三种：通过 / 打回（附具体问题）/ 需所有者决定。打回 → 原实施者修 → 再复核。**打回 3 次 → 交所有者**。
+- 没有复核通过记录的项，improvements.md 里标「待复核」，不算进提升数字。
+- 每个文件同一时间只有一个实施者（见"文件归属"）。
+
+| 项 | improvements # | 实施者 | 复核者 | 状态 | 打回次数 | 证据 |
+|---|---|---|---|---|---|---|
+| 防注入 / compact 注入 / handoff 覆盖写 | 12 | 实施 A | Claude 复核（round4_review_12_13.md） | 打回 → 实施 G 修 compact 解析等 | 1 | round4_review_12_13.md |
+| Pro 封顶 + D2/D6 | 13 | 主会话 | Claude 复核 | 打回 → 状态栏跟随（实施 D）、评分表固定日期（实施 B） | 1 | 同上 |
+| weekly 子 agent 明细 | 14 | 实施 C | Codex | **通过** | 0 | round4_impl_C.md |
+| router 拆分 + D7 | 15 | 实施 B | Claude 复核（第 3 轮复核的 test_filter 部分） | 打回 → 已修（#18） | 1 | round3_review.md |
+| test_filter 阻断修复 + 评分表夹具/变异 | 18 | 实施 B | Codex + 回放 H 重跑 | **打回**（11-06 03:05）：多行 `[[ … ]]` 被插分号致语法错；`\ #` 被当注释吞掉后续命令（两者 B2 前即存在）；SR19 断言漏检 → 实施 B4 修 test_filter，并入 agent 修 SR19 | 1 | round4_codex_review_B.md |
+| Pro 配置包 + 清单 + router fork 节 | 16 | 实施 E | Codex | **打回第 2 次**（03:25）：同秒备份覆盖、第 22 步 ls -t 选错、scan 按 mtime 跳过漏新记录、坏 usage 崩、state 路径未校验、env 非 dict、符号链接、E1 state 兼容 → E3 修（分诊过的清单） | 2 | round4_impl_E.md E2 节 |
+| limit_logger | 17 | 实施 F | Codex | **打回第 2 次**（03:25）：阻塞 LOCK_EX 无超时（实测 10.3s 不返回，真实已装！）、link/unlink 交错丢新事件、短写半条 JSON、卸载子串误删 → F3 修 | 2 | round4_impl_F.md F2 节 |
+| 状态栏/守卫一批 bug（含 Codex 8 条） | 19 | 实施 D | Codex | **打回**（11-06 03:00）：过期提醒记录没在去重前清理；坏记录导致强提醒静默丢失、连累其它会话 → 实施 D2 修（连同 SL03）→ **D2 已交付**（03:30，tests_r4D 改前 36/42→改后 42/42，scorecard 107/107）→ Codex 复核 D2 中（新写法，round4_codex_review_D2.md） | 1 | round4_codex_review_D.md |
+| session_resume 一批 bug | 20 | 实施 G | Codex | **打回**（11-06 03:15）：compact 仍混入旧轮次下一步；ps 失败时读他人 owner 的 v2 指针；指针选择与消费非原子 → 实施 G2 修 | 1 | round4_codex_review_G.md |
+| 第 5 轮：额度花在哪（真实数据分析） | — | 分析 agent（Opus） | — | 进行中 | — | round5_where_tokens_go.md |
+| 状态栏坏 stdin 崩溃（盲测 SL03） | 19 附 | 实施 D2 | Codex | 修复中 | 0 | round4_triage.md |
+| 评分表并入 G/D 建议场景 + SR19 断言修 | — | 并入 agent（Sonnet） | 主会话核数 | 完成：69/69 → **107/107**（G 8 个顺延为 SR20–27，D 28 个；SL14/SR19 去 na；SR19 改为三条红线都在下一步前） | — | round4_scorecard_merge.md |
+| 真实命令回放 | — | 回放 H | — | 19,951 条改坏 0 | — | round4_replay_H.md |
+| 盲测场景 | — | Codex | 分诊 agent | 修正夹具后 56/60（93%）；真 bug SL03；待所有者 CG11/CG13/SR06 | — | round4_triage.md |
+
+文件归属（同一时间只有一人改，11-06 03:00 更新）：scorecard.py → 并入 agent；statusline.sh、context_guard.py、weekly_compare.py、tests_r4D.py → 实施 D2；test_filter.py → 实施 B4；session_resume.py → 空闲（等 Codex 复核 G）；pro_switch/清单/router → 空闲（等复核 E2）；limit_logger 系 → 空闲（等复核 F2）；improvements.md、本账 → 主会话。

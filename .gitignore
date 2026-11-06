@@ -9,3 +9,8 @@ __pycache__/
 .DS_Store
 .secret/
 drafts/
+HANDOFF.history.md
+# raw Codex review logs contain local file dumps; publish reports/round4_codex_reviews_summary.md instead
+reports/round4_codex_review.md
+reports/round4_codex_review_*.md
+reports/round4_heldout_codex.log
