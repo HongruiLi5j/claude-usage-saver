@@ -40,11 +40,10 @@ The kit is improved in rounds, each run by several agents with different models:
 
 | Metric | Value | Confidence |
 |---|---|---|
-| **Real usage per request** (cost-weighted tokens) | 32.1k → 21.5k (**−33%**) | Measured on real transcripts, but with **< 3 days** of post-change data, so treat it as a trend. Not all of it is attributable to this kit. |
-| Average context per request | 211k → 111k (−47%) | Same caveat as above. |
-| Self-written regression scorecard | 38% (16/42) → 100% (107/107) | Measured. Scenarios are written by us and the set grew over time; the initial version scores 34% (20/58) on the current applicable set. |
-| Held-out blind test (scenarios written by Codex from the docs only) | 93% (56/60) | Measured after fixture triage: 1 real bug found (fix pending review), 3 cases need a design decision. |
-| Replay of 19,951 real Bash commands through `test_filter` | 0 broken (previous version: 1) | Measured (syntax and exit code). `test_filter` rewrites only ~5% of test commands, so it is **not** the main source of savings. |
+| **Real usage per request** (cost-weighted tokens) | Raw before/after: 32.1k → 21.5k (−33%). **Not attributable to the kit.** | An independent statistical review (`reports/round5_F1_critique.md`) found: only ~6 hours of post-change data; excluding one unusually expensive overnight run the drop is −21% (95% CI −33% to −5%); within the same context-length bucket the per-request cost is essentially unchanged; and a placebo test shows −19% to −26% drops on 3 of 11 baseline days with no change at all. A controlled A/B benchmark is being built (`reports/round5_F2_bench.md`). |
+| Self-written regression scorecard | 38% (16/42) → 100% (107/107) | Measured, but the scenarios were written against the fixed behaviour, so this is a regression gate, not evidence of quality. The initial version scores 34% (20/58) on the current applicable set. |
+| Held-out blind test (scenarios written by Codex from the docs only) | Raw 80% (48/60); 93% (56/60) after reclassifying 10 failures as fixture errors | The reclassification was done after seeing the implementation, and 29 scenarios were not re-run, so read the raw number as the honest one. A new held-out round is in progress. |
+| Replay of 19,951 real Bash commands through `test_filter` | 0 broken among the 82 commands it actually rewrites | Measured (syntax and exit code only). With 0/82 the 95% upper bound on the break rate is ~3.7%. `test_filter` touches only ~5% of test commands, so it is **not** a main source of savings. |
 | Opus → Sonnet on small coding tasks | API list price ×0.50 (95% CI 0.487–0.510, 142 paired tasks) | Measured at API prices. The effect on **subscription quota is unknown**, and the **quality difference was not measurable** (ceiling effect). |
 
 Every change goes through an independent reviewer (Codex) that reruns the evidence. As of round 4, only 1 of 7 items has passed review; the others are in fix loops. Status is tracked in `reports/round4_ledger.md`, and review conclusions are in `reports/round4_codex_reviews_summary.md`.
