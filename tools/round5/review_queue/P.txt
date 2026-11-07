@@ -1,0 +1,3 @@
+任务：复核 P（第 6 轮：实时节约表 + 价格表 + weekly_compare 修复 + statusline 并发写修复 + rate_history）。读 reports/round6_P.md（撤回命令在第 8 节）。改动：新增 tools/pricing.py、hooks/savings_meter.py（或报告里写的名字）；修改 hooks/statusline.sh（改前在 backups/statusline.sh.pre-r6P）、tools/weekly_compare.py；新测试 tools/tests_r6P.py。
+实跑：tools/tests_r6P.py、tools/round5/K_testall.py。重点：1) 上次复核 I 的第 1 项复现（8 个状态栏进程并发 ×12 轮，会话窗口记录不能丢；丢了记录在窗口 200k、上下文 180k 时会漏提醒）必须重跑，并且加大到 32 并发；2) 状态栏延迟，稳态和大 transcript 都测，坏 JSON、缺字段、缺 transcript、未知模型都不能报错，也不能让状态栏空白；3) 价格表和官方 Anthropic 定价一致（缓存读、缓存写 5 分钟/1 小时、Opus/Sonnet/Haiku/Fable），未知模型要有标记；4) 节约% 的口径：只计入有直接反事实的机制，守卫那一项 counted:false，F2 校准表能复算出来；5) weekly_compare 的日数口径（剔除不完整的天）和两种口径的报告；6) savings.jsonl 和 rate_history.jsonl 的去重、大小上限、并发写。
+结论写在最后：通过 / 打回（列出必须修的问题）/ 需所有者决定。

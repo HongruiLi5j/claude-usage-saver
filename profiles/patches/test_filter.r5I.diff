@@ -1,0 +1,127 @@
+--- backups/test_filter.py.pre-r5I	2026-11-06 02:57:27
++++ hooks/test_filter.py	2026-11-06 18:46:13
+@@ -5,7 +5,11 @@
+ 看不准就放行：含管道/重定向/heredoc/$(...)/反引号/括号子 shell/后台 &，任何一段以 bash 保留字开头
+ （if/for/while/{ 等多行结构），测试带 --watch/--pdb 等交互参数，或带 USAGE_SAVER_RAW=1。
+ 包装保留原退出码；在 set -e 下也先打印失败摘要再退出。任何异常一律放行。
+-包装测试时顺手把超过 7 天的日志移到 testlogs/_old/（不删，最多每小时一次）。"""
++包装测试时顺手把超过 7 天的日志移到 testlogs/_old/（不删，最多每小时一次）。
++R5I（项目画像）：内置规则（pytest / python -m pytest / npm test / node --test）没认出测试时，才按 hook 输入的 cwd
++读 tools/project_profile.py 的画像，认这个项目自己的测试命令（lake build、cargo test、go test、make test、
++python tests/test_x.py、覆盖文件 .usage-saver.json 的 test_commands …），并把画像的 grep 片段（如 Lean 的
++warning:|sorry、中文「失败」）加进失败摘要。内置规则认出的命令改写结果与改前逐字相同；画像缺失/出错 = 改前行为。"""
+ import json, sys, re, os, shlex, time
+ 
+ LOGDIR = os.path.expanduser("~/Documents/Projects/claude-usage-saver/state/testlogs")
+@@ -89,7 +93,7 @@
+     return segs
+ 
+ 
+-def is_test(seg):
++def is_test(seg, prof=None, pp=None):
+     try:
+         w = shlex.split(seg)
+     except ValueError:
+@@ -105,15 +109,23 @@
+         return True
+     if re.fullmatch(r"python[0-9.]*", head):     # python -m pytest / .venv/bin/python3 -m pytest
+         args = w[1:]
+-        return "-m" in args and args[args.index("-m") + 1:args.index("-m") + 2] == ["pytest"]
+-    if head == "npm":
+-        return w[1:2] == ["test"] or w[1:3] == ["run", "test"]
+-    if head == "node":
+-        return "--test" in w[1:]
++        if "-m" in args and args[args.index("-m") + 1:args.index("-m") + 2] == ["pytest"]:
++            return True
++    elif head == "npm":
++        if w[1:2] == ["test"] or w[1:3] == ["run", "test"]:
++            return True
++    elif head == "node":
++        if "--test" in w[1:]:
++            return True
++    if prof and pp:                              # R5I：这个项目自己的测试命令
++        try:
++            return bool(pp.match_test(w, prof))
++        except Exception:
++            return False
+     return False
+ 
+ 
+-def wrap(seg, logdir):
++def wrap(seg, logdir, grep=GREP_PAT):
+     """包装一段测试命令。要点：
+     - mktemp 失败就原样跑这一段（不过滤）；
+     - 运行前先打印日志路径（超时被杀时也知道去哪看）；
+@@ -127,24 +139,29 @@
+             "{ " + seg + "\n} >\"$__usL\" 2>&1 && __usrc=0 || __usrc=$?; "
+             "__usn=$(wc -l <\"$__usL\" 2>/dev/null | tr -d ' ') || __usn=0; "
+             "if [ \"$__usn\" -le " + str(SHORT) + " ] 2>/dev/null; then cat \"$__usL\" || true; else "
+-            "{ grep -nE -B2 -A12 '" + GREP_PAT + "' \"$__usL\" | head -120; } || true; "
++            "{ grep -nE -B2 -A12 '" + grep + "' \"$__usL\" | head -120; } || true; "
+             "echo '----- 结尾 -----'; { tail -n 12 \"$__usL\"; } || true; "
+             "echo \"[测试输出已过滤：完整 $__usn 行在上面的日志里；需要原样输出就在命令前加 USAGE_SAVER_RAW=1]\" || true; "
+             "fi; (exit $__usrc); fi; }")
+ 
+ 
+-def rewrite(cmd, logdir=LOGDIR):
++def rewrite(cmd, logdir=LOGDIR, prof=None, pp=None):
++    """prof/pp：项目画像和画像模块（R5I）；不给就是改前的行为。"""
+     if "USAGE_SAVER_RAW=1" in cmd or "<<" in cmd:
+         return None
+     segs = split_segments(cmd)
+     if not segs:
+         return None
+-    if not any(s and is_test(s) for s, _ in segs):
++    if not any(s and is_test(s, prof, pp) for s, _ in segs):
+         return None
++    grep = GREP_PAT
++    extra = ((prof or {}).get("tests") or {}).get("grep_extra") if prof else None
++    if extra and pp and pp.valid_grep(extra) and pp.valid_grep(GREP_PAT + "|" + extra):
++        grep = "(" + GREP_PAT.strip("()") + "|" + extra + ")"
+     out = []
+     for s, sep in segs:
+         if s:
+-            out.append(wrap(s, logdir) if is_test(s) else s)
++            out.append(wrap(s, logdir, grep) if is_test(s, prof, pp) else s)
+         if sep and s:
+             out.append(sep)
+     # 去掉末尾悬空的分隔符
+@@ -153,6 +170,24 @@
+     return " ".join(out)
+ 
+ 
++def load_profile(cwd):
++    """(画像, 画像模块)：按本脚本位置找 tools/project_profile.py；没有 cwd、模块缺失或出错返回 (None, None)。"""
++    try:
++        if not cwd:
++            return None, None
++        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "project_profile.py")
++        if not os.path.isfile(path):
++            return None, None
++        import importlib.util
++        spec = importlib.util.spec_from_file_location("usage_saver_project_profile", path)
++        pp = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(pp)
++        prof = pp.get_profile(cwd, budget_s=0.2)
++        return (prof, pp) if isinstance(prof, dict) and prof.get("tests") else (None, None)
++    except Exception:
++        return None, None
++
++
+ def prune_old_logs(logdir=LOGDIR, days=7, every_s=3600):
+     """把 logdir 里超过 days 天的 run-* 日志移到 logdir/_old/（不删）。
+     最多每 every_s 秒做一次（看上一级目录里 .testlogs_last_prune 的修改时间；放在 logdir 外，
+@@ -184,7 +219,12 @@
+     try:
+         d = json.load(sys.stdin)
+         ti = d.get("tool_input") or {}
+-        new = rewrite(ti.get("command") or "")
++        cmd = ti.get("command") or ""
++        new = rewrite(cmd)
++        if not new and cmd.strip() and "USAGE_SAVER_RAW=1" not in cmd and "<<" not in cmd and split_segments(cmd):
++            prof, pp = load_profile(d.get("cwd"))      # R5I：内置规则没认出时才读画像
++            if prof:
++                new = rewrite(cmd, LOGDIR, prof, pp)
+         if new:
+             os.makedirs(LOGDIR, exist_ok=True)
+             prune_old_logs()                      # D7：顺手整理旧日志，出错不影响包装

@@ -1,0 +1,299 @@
+{
+ "_doc": "Cross-tool adaptation matrix (round 5 H, 2026-11-06). level: direct | adapter | na. evidence: measured (run on this machine) | doc (official docs, see reports/round5_H.md for URLs) | unverified. Machine-readable so tools/round5/I_adapt_matrix.py can join on (component, tool).",
+ "tools": [
+  "claude-code",
+  "codex-cli",
+  "gemini-cli",
+  "cursor",
+  "aider"
+ ],
+ "rows": [
+  {
+   "component": "test_filter",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "hooks/test_filter.py PreToolUse updatedInput"
+  },
+  {
+   "component": "test_filter",
+   "tool": "codex-cli",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "usaver-run via AGENTS.md rule (no hook needed); hook route = adapter: PreToolUse needs permissionDecision=allow + updatedInput (doc), not found in local 0.163.0 binary strings, hooks need /hooks trust"
+  },
+  {
+   "component": "test_filter",
+   "tool": "gemini-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "usaver-run via GEMINI.md, or BeforeTool(run_shell_command) hookSpecificOutput.tool_input"
+  },
+  {
+   "component": "test_filter",
+   "tool": "cursor",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "usaver-run via AGENTS.md/.cursor/rules, or preToolUse(Shell) updated_input (IDE; CLI unverified)"
+  },
+  {
+   "component": "test_filter",
+   "tool": "aider",
+   "level": "direct",
+   "evidence": "unverified",
+   "how": "--test-cmd 'usaver-run pytest -q' (aider not installed here)"
+  },
+  {
+   "component": "context_guard",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "UserPromptSubmit additionalContext"
+  },
+  {
+   "component": "context_guard",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "UserPromptSubmit additionalContext exists; current guard parses only Claude transcripts -> silent no-op on Codex rollouts; needs a rollout parser (token_count.last_token_usage.input_tokens, model_context_window). Native alternative: model_auto_compact_token_limit"
+  },
+  {
+   "component": "context_guard",
+   "tool": "gemini-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "BeforeAgent additionalContext; transcript format unverified. Native: model.compressionThreshold"
+  },
+  {
+   "component": "context_guard",
+   "tool": "cursor",
+   "level": "na",
+   "evidence": "doc",
+   "how": "beforeSubmitPrompt cannot inject context; rely on Cursor auto-summarization + AGENTS.md handoff rule"
+  },
+  {
+   "component": "context_guard",
+   "tool": "aider",
+   "level": "na",
+   "evidence": "doc",
+   "how": "no hooks; native --max-chat-history-tokens"
+  },
+  {
+   "component": "handoff_file",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "handoff skill"
+  },
+  {
+   "component": "handoff_file",
+   "tool": "codex-cli",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "AGENTS.md snippet rule; headings parse with session_resume (offline test)"
+  },
+  {
+   "component": "handoff_file",
+   "tool": "gemini-cli",
+   "level": "direct",
+   "evidence": "doc",
+   "how": "same snippet in GEMINI.md or context.fileName=AGENTS.md"
+  },
+  {
+   "component": "handoff_file",
+   "tool": "cursor",
+   "level": "direct",
+   "evidence": "doc",
+   "how": "Cursor reads AGENTS.md"
+  },
+  {
+   "component": "handoff_file",
+   "tool": "aider",
+   "level": "direct",
+   "evidence": "doc",
+   "how": "--read CONVENTIONS.md containing the snippet"
+  },
+  {
+   "component": "session_resume",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "SessionStart/SessionEnd hooks"
+  },
+  {
+   "component": "session_resume",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "SessionStart additionalContext exists; transcript digest needs rollout parser; owner-ownership logic is Claude-process specific"
+  },
+  {
+   "component": "session_resume",
+   "tool": "gemini-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "SessionStart additionalContext"
+  },
+  {
+   "component": "session_resume",
+   "tool": "cursor",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "sessionStart additional_context"
+  },
+  {
+   "component": "session_resume",
+   "tool": "aider",
+   "level": "na",
+   "evidence": "doc",
+   "how": "no hooks; user loads HANDOFF.md with /read"
+  },
+  {
+   "component": "limit_logger",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "StopFailure/Notification hooks"
+  },
+  {
+   "component": "limit_logger",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "measured",
+   "how": "rate_limits (5h/7d used_percent, rate_limit_reached_type) are in rollout token_count events; codex_usage.py --emit-rate writes rate.json shape (tested with context_guard.get_mode)"
+  },
+  {
+   "component": "limit_logger",
+   "tool": "gemini-cli",
+   "level": "na",
+   "evidence": "unverified",
+   "how": "no local quota readings documented"
+  },
+  {
+   "component": "limit_logger",
+   "tool": "cursor",
+   "level": "na",
+   "evidence": "unverified",
+   "how": "dashboard only"
+  },
+  {
+   "component": "limit_logger",
+   "tool": "aider",
+   "level": "na",
+   "evidence": "doc",
+   "how": "API-key billing, no quota windows"
+  },
+  {
+   "component": "weekly_compare",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "tools/weekly_compare.py"
+  },
+  {
+   "component": "weekly_compare",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "measured",
+   "how": "adapters/codex/codex_usage.py (same cost units; parsed tokens == 'tokens used' printed by codex exec)"
+  },
+  {
+   "component": "weekly_compare",
+   "tool": "gemini-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "telemetry target=local outfile, gemini_cli.api_response token counts (file format unverified)"
+  },
+  {
+   "component": "weekly_compare",
+   "tool": "cursor",
+   "level": "na",
+   "evidence": "unverified",
+   "how": "no local per-request log documented"
+  },
+  {
+   "component": "weekly_compare",
+   "tool": "aider",
+   "level": "adapter",
+   "evidence": "unverified",
+   "how": "--analytics-log jsonl (schema unverified)"
+  },
+  {
+   "component": "model_router",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "~/.claude/skills/model-router"
+  },
+  {
+   "component": "model_router",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "measured",
+   "how": "tool-neutral 'Delegating' rules in AGENTS.md snippet; Claude model aliases do not apply"
+  },
+  {
+   "component": "model_router",
+   "tool": "gemini-cli",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "same text rules"
+  },
+  {
+   "component": "model_router",
+   "tool": "cursor",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "same text rules"
+  },
+  {
+   "component": "model_router",
+   "tool": "aider",
+   "level": "adapter",
+   "evidence": "doc",
+   "how": "text rules + --weak-model"
+  },
+  {
+   "component": "statusline",
+   "tool": "claude-code",
+   "level": "direct",
+   "evidence": "measured",
+   "how": "statusLine command"
+  },
+  {
+   "component": "statusline",
+   "tool": "codex-cli",
+   "level": "na",
+   "evidence": "doc",
+   "how": "tui.status_line takes built-in item ids only; no custom command (feature request)"
+  },
+  {
+   "component": "statusline",
+   "tool": "gemini-cli",
+   "level": "na",
+   "evidence": "doc",
+   "how": "ui.footer.items built-ins only"
+  },
+  {
+   "component": "statusline",
+   "tool": "cursor",
+   "level": "na",
+   "evidence": "unverified",
+   "how": "none documented"
+  },
+  {
+   "component": "statusline",
+   "tool": "aider",
+   "level": "na",
+   "evidence": "unverified",
+   "how": "none documented"
+  },
+  {
+   "component": "skills_sync",
+   "tool": "codex-cli",
+   "level": "adapter",
+   "evidence": "measured",
+   "how": "adapters/skills_sync.py renders ~/.claude/skills -> ~/.agents/skills (temp-HOME roundtrip tested; real HOME only planned)"
+  }
+ ]
+}

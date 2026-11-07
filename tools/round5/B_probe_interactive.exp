@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+# B_probe_interactive.exp（第 5 轮 B）：在伪终端里开交互式 claude（仿 henchmen window agent）。会消耗额度。
+# 第一次进新目录会弹"信任此文件夹"，脚本按 ↓ + 回车选"信任"。会清掉 CLAUDE* 环境变量（否则继承父会话、不写 transcript）。
+# 用法: B_probe_interactive.exp <workdir> <model> <prompt> <logfile> <maxwait秒>
+set wd [lindex $argv 0]; set model [lindex $argv 1]; set prompt [lindex $argv 2]; set lf [lindex $argv 3]; set maxw [lindex $argv 4]
+log_file -noappend $lf
+set timeout 20
+cd $wd
+set env(TERM) xterm-256color
+foreach n [array names env] { if {[string match CLAUDE* $n]} { unset env($n) } }
+spawn -noecho claude --model $model --permission-mode bypassPermissions
+stty rows 50 columns 160 < $spawn_out(slave,name)
+sleep 8
+send "\033\[B"
+sleep 1
+send "\r"
+sleep 8
+sleep 2
+send -- $prompt
+sleep 2
+send "\r"
+set timeout $maxw
+expect {
+  -re {LAST=f[0-9]+} { }
+  timeout { }
+}
+sleep 5
+send "/exit\r"
+sleep 5

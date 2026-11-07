@@ -1,4 +1,4 @@
-# 回归评分表（2026-11-06 02:58）
+# 回归评分表（2026-11-07 00:42）
 
 由 `python3 tools/scorecard.py --version all` 生成，不要手改。场景定义在 `tools/scorecard.py`，来源是 `reports/round1_findings.md` 与 `reports/round2_review_AC.md`；「正常」= 本来就该通过的基本功能场景。
 
@@ -196,4 +196,4 @@
 
 每个场景一个临时目录（tempfile，结束自动删除）：假 HOME、`USAGE_SAVER_STATE` 指向临时目录、TZ=America/Los_Angeles；被测脚本复制到假 HOME 下再跑，statusline.sh 的 S、test_filter.py 的 LOGDIR 替换成临时目录，weekly_compare.py 的「现在」固定为 2026-11-08 20:00 UTC（结果不随运行日期变化）。测试命令用假的 pytest（临时 bin 目录，放在 PATH 最前），用 /bin/bash 执行。不碰真实的 ~/.claude、state/、testlogs/。
 
-总耗时 12.6 秒。
+总耗时 15.7 秒。

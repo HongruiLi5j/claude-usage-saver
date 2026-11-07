@@ -1,0 +1,3 @@
+任务：复核 I2（第 6 轮，修的是 I 第 1 次被打回的问题）。上一次的复核结论见 /private/tmp/claude-501/codexws/r5rev_I/REVIEW_I.md 和 reports/codex_r5rev_I.md 末尾。读 reports/round6_I2.md。改动在 hooks/session_resume.py 和 tools/project_profile.py；改前的版本在 backups/session_resume.py.pre-r6I2.20261106-234125、backups/project_profile.py.pre-r6I2.20261106-234125，diff 在 backups/r6I2_stage/。
+请重跑上次的第 2、3 项复现（覆盖文件经符号链接指到兄弟项目；没有 git 的子项目 group/lean-child 带构建清单和自己的 交接.md，却取到 group/HANDOFF.md），再自己造：realpath 越界、..、绝对路径、符号链接循环、多层嵌套、只有父目录有 git、中文交接文件名（交接.md、项目交接.md）、子项目没有交接且父目录也没有 git。跑 tools/tests_r6I2.py、profiles/test_project_profile.py、tools/round5/I_adapt_matrix.py、tools/round5/K_testall.py，测 hook 延迟。第 1 项（statusline 并发写）不在本次范围内，另由 P 修。
+结论写在最后：通过 / 打回（列出必须修的问题）。

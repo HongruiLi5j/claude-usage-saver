@@ -14,3 +14,10 @@ HANDOFF.history.md
 reports/round4_codex_review.md
 reports/round4_codex_review_*.md
 reports/round4_heldout_codex.log
+# raw Codex review/discussion logs (local file dumps, personal paths)
+reports/codex_*.md
+# raw per-request data extracted from private transcripts
+tools/round5/F1/*.csv
+tools/round5/F1/codex_rate/
+# raw benchmark session transcripts (full session content)
+tools/bench/results/raw/

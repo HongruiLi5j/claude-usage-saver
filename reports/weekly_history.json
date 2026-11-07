@@ -1,23 +1,121 @@
 [
  {
-  "ts": "2026-11-06T10:37:24.798067+00:00",
+  "ts": "2026-11-07T07:51:14.207505+00:00",
   "before": {
    "days": 17,
-   "cost_per_day": 36.11248220588237,
-   "calls_per_day": 1125.1764705882354,
-   "cost_per_call": 32.09494968109579,
-   "median_ctx": 140598,
-   "mean_ctx": 211678,
-   "opus_share": 57.51054334606218
+   "cost_per_day": 24.36064382794107,
+   "calls_per_day": 1120.6470588235295,
+   "cost_per_call": 21.738016118576358,
+   "median_ctx": 141202,
+   "mean_ctx": 212533,
+   "opus_share": 67.1803438216175,
+   "full_days": 16,
+   "partial_days": [
+    "2026-10-20"
+   ],
+   "active_hours": 158,
+   "seq_cost_per_call": 34.78964330914349,
+   "seq_cost_per_full_day": 41.003276555156255,
+   "cost_per_full_day": 25.462867204687534,
+   "calls_per_full_day": 1176.0625,
+   "seq_cost_per_active_hour": 4.194794270142359,
+   "usd_total": 1325.55,
+   "calls": 19051,
+   "tokens": {
+    "inp": 45762,
+    "cw": 66310074,
+    "cr": 3982621550,
+    "out": 16819509
+   },
+   "pricing": "tools/pricing.py"
   },
   "recent": {
    "days": 2,
-   "cost_per_day": 9.778767975000001,
-   "calls_per_day": 454.5,
-   "cost_per_call": 21.515441089108915,
-   "median_ctx": 96364,
-   "mean_ctx": 107948,
-   "opus_share": 53.5095117644409
+   "cost_per_day": 24.795029000000007,
+   "calls_per_day": 1379.0,
+   "cost_per_call": 17.98044162436549,
+   "median_ctx": 115296,
+   "mean_ctx": 128007,
+   "opus_share": 92.12427613467256,
+   "full_days": 1,
+   "partial_days": [
+    "2026-11-05"
+   ],
+   "active_hours": 9,
+   "seq_cost_per_call": 33.23524813089196,
+   "seq_cost_per_full_day": 91.56258000000003,
+   "cost_per_full_day": 49.34072790000001,
+   "calls_per_full_day": 2741.0,
+   "seq_cost_per_active_hour": 10.184757149444447,
+   "usd_total": 183.33,
+   "calls": 2758,
+   "tokens": {
+    "inp": 6034,
+    "cw": 11694788,
+    "cr": 341343511,
+    "out": 3273728
+   },
+   "pricing": "tools/pricing.py"
+  }
+ },
+ {
+  "ts": "2026-11-07T08:33:04.568092+00:00",
+  "before": {
+   "days": 17,
+   "cost_per_day": 24.36064382794107,
+   "calls_per_day": 1120.6470588235295,
+   "cost_per_call": 21.738016118576358,
+   "median_ctx": 141202,
+   "mean_ctx": 212533,
+   "opus_share": 67.1803438216175,
+   "full_days": 16,
+   "partial_days": [
+    "2026-10-20"
+   ],
+   "active_hours": 158,
+   "seq_cost_per_call": 34.78964330914349,
+   "seq_cost_per_full_day": 41.003276555156255,
+   "cost_per_full_day": 25.462867204687534,
+   "calls_per_full_day": 1176.0625,
+   "seq_cost_per_active_hour": 4.194794270142359,
+   "usd_total": 1325.55,
+   "calls": 19051,
+   "tokens": {
+    "inp": 45762,
+    "cw": 66310074,
+    "cr": 3982621550,
+    "out": 16819509
+   },
+   "pricing": "tools/pricing.py"
+  },
+  "recent": {
+   "days": 3,
+   "cost_per_day": 18.31457756666667,
+   "calls_per_day": 1023.6666666666666,
+   "cost_per_call": 17.891153598176494,
+   "median_ctx": 115925,
+   "mean_ctx": 127355,
+   "opus_share": 92.94803301967703,
+   "full_days": 1,
+   "partial_days": [
+    "2026-11-05",
+    "2026-11-07"
+   ],
+   "active_hours": 10,
+   "seq_cost_per_call": 33.33447207587104,
+   "seq_cost_per_full_day": 92.76149780000003,
+   "cost_per_full_day": 49.94018680000003,
+   "calls_per_full_day": 2776.0,
+   "seq_cost_per_active_hour": 10.237016374499996,
+   "usd_total": 204.74,
+   "calls": 3071,
+   "tokens": {
+    "inp": 6698,
+    "cw": 12722796,
+    "cr": 378379845,
+    "out": 3693569
+   },
+   "pricing": "tools/pricing.py"
   }
  }
 ]

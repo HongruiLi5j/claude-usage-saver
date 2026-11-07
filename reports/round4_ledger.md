@@ -24,3 +24,16 @@
 | 盲测场景 | — | Codex | 分诊 agent | 修正夹具后 56/60（93%）；真 bug SL03；待所有者 CG11/CG13/SR06 | — | round4_triage.md |
 
 文件归属（同一时间只有一人改，11-06 03:00 更新）：scorecard.py → 并入 agent；statusline.sh、context_guard.py、weekly_compare.py、tests_r4D.py → 实施 D2；test_filter.py → 实施 B4；session_resume.py → 空闲（等 Codex 复核 G）；pro_switch/清单/router → 空闲（等复核 E2）；limit_logger 系 → 空闲（等复核 F2）；improvements.md、本账 → 主会话。
+
+## 第 5 轮复核结果（11-06，Codex 新写法实跑）
+| 项 | 结论 | 打回次数 | 说明 |
+|---|---|---|---|
+| D2（#19 状态栏/守卫） | **通过** | 1 | tests_r4D 42/42，坏输入 20 次全过，合法输出 16 组逐字节一致 |
+| E3（#16 Pro 切换） | **通过** | 2 | 12 组检查全过；11-21 当天还要真机确认 |
+| G2（#20 session_resume） | **通过** | 1 | 三个打回问题都已复现并确认修好；真实 compact 输出核对过 |
+| B4（#18 test_filter） | **打回** | 2 | `$'…'` 引号拆错，测试没跑却 rc=0 → B5 修（再被打回就交所有者） |
+| F3（#17 limit_logger 安装器） | **打回（第 3 次）→ 交所有者** | 3 | 命令参数里出现 logger 路径（如 `/bin/echo .../limit_logger.py`）会被认成 logger，导致漏装、卸载误删。hook 本身没问题，真实 settings 里没有这种配置 |
+| C（第 5 轮：通读/调研改派 Codex） | **通过**（主会话审阅 model-router 的 19 行改动：只加不删，复核仍留给 Opus，符合质量优先） | 0 | 通读、调研质量相同，Claude 侧少花 93–97%；复核留给 Opus（命中率 Codex 44%、Opus 58%）|
+| C2（Codex 脚本超时/stdin/额度识别/路径） | 实施者实跑：模拟卡住 3s 返回 124、真实额度用完返回 75、stdin 不再卡；15 分钟真超时未测 | 0 | 实施者自报在 scratchpad 用过一次 rm -f（目标不存在，未删任何东西） |
+| B5（#18 test_filter，基线 B4+R5I） | 实施者实测：对照 bash 97/97、zsh 103/103；入口 0/22 坏；回放 0 坏；scorecard 107/107 → **待复核（第 3 次）**：Codex 额度 23:29 恢复后跑 `tools/codex_review.sh r5rev_B5 tools/round5/review_queue/B5.txt` | 2 | |
+| I（第 5 轮：项目画像，已在真实 hook 生效） | 实施者实测：适应性矩阵 3/21→21/21；全套 354/354；回放 0 坏 → **待复核**：`tools/codex_review.sh r5rev_I tools/round5/review_queue/I.txt` | 0 | |

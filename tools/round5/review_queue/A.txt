@@ -1,0 +1,8 @@
+任务：复核 A（第 5 轮：压缩每个会话和子 agent 的固定开销）。读 reports/round5_A.md 和 tools/round5/A_apply.py。
+不许改真实的 ~/.claude/settings.json，所有实验都用拷贝到 $W 里的副本和 `--settings` 临时文件。
+实跑并核对：
+1. A_apply.py 在临时 HOME 或临时 settings 副本上执行 --dry-run、--apply --yes --profile core、--status、--restore artifact、--undo --yes。每一步之后用 cmp/sha1 检查文件，undo 后必须逐字节还原。对真实路径不加 --yes 时必须拒绝执行。再试坏输入：settings 不是合法 JSON、文件不存在、已经 apply 过又 apply 一次、只读文件。
+2. 抽查实测数字（能跑就跑，额度不够就写"未复跑"）：enableArtifact:false 和 skillOverrides 两项，主会话首请求的 input token 是否下降约 13k 和 3k（用 claude -p 或交互会话的 transcript usage 字段；注意 A 自己提醒过 -p 模式没有 Artifact 工具，会测偏小）。
+3. 检查结论的逻辑：每周 23–45M 的估算基数（A 自己说 198M/周 这个基数只来自约 3 小时的数据）；disableBundledSkills 反而 +3.6k 的说法；syncClaudeAiSkills:false 会把目录移到 .trash 的风险说明是否充分。
+4. 质量风险：关掉 Artifact 和这些 skill 后，所有者常用的功能（Gmail 连接器、docs/pdf/xlsx 等 skill）会不会悄悄失效。core 方案到底关了什么，要列清楚。
+结论写在最后：通过 / 打回（列出必须修的问题）。

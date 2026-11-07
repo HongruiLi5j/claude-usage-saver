@@ -1,0 +1,4 @@
+任务：复核 I3（第 6 轮，I 这条线第 3 次实施；I2 被你打回过：靠 CLAUDE.md/AGENTS.md/.usage-saver.json 标出根的无 git 子项目仍会注入父目录交接，6/6 复现）。再打回就交所有者，所以只把真实影响的问题作为打回理由。
+读 reports/round6_I3.md；上次复核结论在 reports/codex_r6rev_I2.md 末尾。改动在 hooks/session_resume.py、tools/project_profile.py（root_info 统一判定）、tools/tests_r6I2.py；改前版本 backups/*.pre-r6I3.20261107-000858；副本/diff 在 backups/r6I3_stage/。
+请：1) 重跑你上次的 6/6 复现脚本；2) 新规则的反例：容器 ~/Documents/Projects 下的 AGENTS.md 不能把子项目连起来；"底下 2 个以上 git 仓库即容器"会不会把真实 monorepo（根有 .git、底下有 git 子模块）误判成容器而丢交接；只有 README/CLAUDE.md 的父目录；中文交接名（交接.md、项目交接.md）；符号链接；3) 所有者新决定：子项目无交接且上一级无 git 时只输出一行"上一级目录有交接文件：<路径>"，不注入内容——确认 clear 和 compact 都这样，且容器级交接、~/HANDOFF.md 不提示；4) 跑 tools/tests_r6I3.py、tools/tests_r6I2.py、profiles/test_project_profile.py、tools/round5/I_adapt_matrix.py、tools/round5/K_testall.py，测 hook 延迟。
+结论写在最后：通过 / 打回（列出必须修的问题）。

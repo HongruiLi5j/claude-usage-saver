@@ -1,0 +1,7 @@
+{
+ "test_commands": ["python3 tools/scorecard.py", "python3 tools/tests_r4G.py", "python3 tools/tests_r4D.py", "python3 tools/replay/replay_test_filter.py"],
+ "test_grep_extra": "失败|FAIL|✗",
+ "handoff": {"files": ["HANDOFF.md"], "sections": {"red": ["红线 / 未决"], "next": ["下一步"]}},
+ "thresholds": {"soft_tokens": 160000},
+ "cache_ttl_hours": 6
+}

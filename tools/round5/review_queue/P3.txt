@@ -1,0 +1,3 @@
+任务：复核 P3（P 这条线第 3 次实施；你上次打回 P2：设置停用后账本旧节省不撤销）。**再打回就交所有者**，只把真实影响的问题作为打回理由。读 reports/round6_P2.md 的「P3」节；改动只在 hooks/savings_meter.py、tools/tests_r6P2.py、README 一句；改前 backups/*.pre-r6P3。
+请：1) 重跑你的 /private/tmp/claude-501/codexws/r6rev_P2/independent_checks.py（注意其中两句 ledger_saved>0 原本是在断言 bug 存在，修好后应为 0）；2) 检查撤销行（counted:false, revoked:true，rev 更大）：设置停用→撤销，重新启用→重新计入；只改 Δ 不误撤销；进度文件丢失后从账本找回旧记录；设置指纹变化触发重算；P3 前的旧进度文件不被误重算；transcript 已删的会话旧记录保留（已知限制，可接受）。3) 并发写账本不丢、状态栏 ≤50ms。4) 跑 tools/tests_r6P2.py、tools/tests_r6P.py、tools/round5/K_testall.py。
+结论写在最后：通过 / 打回（列出必须修的问题）。

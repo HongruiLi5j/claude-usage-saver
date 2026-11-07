@@ -92,3 +92,20 @@ python3 tools/heldout/heldout_codex.py
 | SL04 | 损坏额度缓存不崩溃。 |
 
 共 60 个场景。场景按注册顺序执行，编号不保证连续出现。
+
+## 第 5 轮新增（G，2026-11-06）
+
+- `heldout_r5.py`：65 题新盲测（LL/IL/PS/SR/CG/SL/TF），说明和逐题依据见 `README_r5.md`。每题把套件复制到临时 HOME 下再运行副本，不碰真实 state/ 和 ~/.claude。运行：`python3 tools/heldout/heldout_r5.py`；对比别的版本：`HELDOUT_SUITE=<套件副本目录> python3 tools/heldout/heldout_r5.py`。
+- `r5_codex_inputs/`：交给 Codex 出题的任务说明（TASK.md）、公开接口说明（contract.md）和文件头注释汇编（headers.md）。出题用的其余文档就是仓库里的 README.md、使用说明.md、reports/improvements.md、config.json。
+- 结果和分诊：`reports/round5_G_heldout.md`。
+
+## 第 6 轮 TF 难题（heldout_tf2.py，G2）
+
+38 题：R01–R32 必须改写并真实执行（原命令和改写后命令在两份相同的临时项目里各跑一次，比较退出码、假测试调用序列、项目目录树、可见输出变短、关键行不丢），N01–N06 不应改写。标 `[超出文档]` 的 6 题（R16 R17 R18 R26 R31）比当前 docstring 更严格。
+
+```sh
+python3 tools/heldout/heldout_tf2.py                                  # 测 hooks/test_filter.py
+HELDOUT_TF2_HOOK=/path/other_hook.py python3 tools/heldout/heldout_tf2.py   # 换一个 hook 文件做对照
+HELDOUT_ONLY=R2 HELDOUT_TF2_VERBOSE=1 python3 tools/heldout/heldout_tf2.py  # 筛选 + 失败时打印改写后命令
+```
+每题临时 HOME、复制套件副本，约 5 秒跑完，0 个 Claude token。

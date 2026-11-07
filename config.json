@@ -8,5 +8,6 @@
  },
  "cap_from_date": "2026-11-21",
  "max_soft_line_tokens": 180000,
- "max_strong_line_tokens": 195000
+ "max_strong_line_tokens": 195000,
+ "window_soft_ratio": 0.7
 }

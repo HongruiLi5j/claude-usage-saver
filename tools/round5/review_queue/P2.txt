@@ -1,0 +1,3 @@
+任务：复核 P2（第 6 轮，修你上次打回 P 的两项：不到 2000 token 的增量不写账本；进度文件重建后修订号被旧值压住。另加：节约表计入"关 Artifact"的节省、一直显示）。读 reports/round6_P2.md；上次结论在 reports/codex_r6rev_P.md 末尾。改动主要在 savings_meter.py 和 usaver-status；改前 backups/*.pre-r6P2，账本 backups/savings.jsonl.pre-r6P2。
+请：1) 重跑你上次两项复现；2) 检查 Artifact 节省的计法：只算 23:42 后、请求工具表里确实没有 Artifact 的请求；排除 claude -p 和本来就没有 Artifact 的子 agent（Explore 等）；Δ 主线程 13,421、子 agent 13,140；按写缓存/读缓存/输入分别计价。造反例：设置改回 enableArtifact=true 后的会话、工具表字段缺失、模型名未知、Fable 5.1（缓存读 0.025×）、同一会话跨 23:42。确认不会把"本来就没有 Artifact"的请求算成节省（高估）。3) 并发：32 并发×3 轮写账本不丢；修订号用毫秒时间戳，时钟回拨会怎样。4) 状态栏延迟 ≤50ms。5) 跑 tools/tests_r6P2.py、tools/tests_r6P.py、tools/round5/K_testall.py。
+结论写在最后：通过 / 打回（列出必须修的问题）。

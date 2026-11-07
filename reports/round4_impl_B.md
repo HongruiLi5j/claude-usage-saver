@@ -238,3 +238,78 @@ cd ~/Documents/Projects/claude-usage-saver; cp -p backups/test_filter.py.pre-r4B
 - `[[` 只在段的第一个词时识别。`! [[`、`if [[` 等写法本来就因为保留字整条放行，不受影响；`FOO=1 [[` 在 bash 里本身就不是条件表达式。
 - 没处理的同类边角：`$'…'` 里的 `\'`（ANSI-C 引号），这个函数的引号状态机本来就不认识，不在本次范围内，历史命令里也没出现过导致改坏的情况（回放 0 改坏）。
 - 对照测试是 bash 实测加 zsh 实测；Claude Code 实际是用 zsh 执行的，zsh 的结果见第 3 节。
+
+---
+
+## B5（Codex 第 2 次打回后，2026-11-06）
+
+依据：`reports/codex_r5rev_B4.md` 末尾的结论（#18 第 2 次打回）。**基线是"B4 + R5I"**：备份 `backups/test_filter.py.pre-r4B5` 里已经包含 I 的项目画像改动（is_test / rewrite / wrap / main、load_profile）。I 的改动全部保留，`split_segments()` 与复核过的 B4 版（`backups/test_filter.py.pre-r5I`）逐字相同。本次只改了 `split_segments()`（+30 行 / -2 行），其它函数一行没动。
+
+我在 B4 的疑虑里写过"`$'…'` 不在本次范围内"，这个判断是错的：它会让测试根本不执行却返回 rc=0，属于必须修的问题。
+
+### 1. 复现（基线 B4+R5I，实测）
+- **Codex 的真实 pytest 复现**（`entry_b5.py`，走真实 hook 入口：stdin JSON 加 cwd；pytest 只读借用 quant-backtest 的 venv）：
+  - `python -m pytest -q -p no:cacheprovider $'test_it\'s; #literal.py'`：bash 和 zsh 下原命令都是 `1 failed`、rc=1；**改写后没有输出、rc=0**。
+  - printf 那一条：rc 7 → 2（bash）/ 1（zsh），引号不闭合。
+  - 两条都和 Codex 的结果一致。
+- **画像路径同样会坏**（I 的 load_profile 路径）：用和 I 的 mk_python 同构的 Python 项目，画像能认出 `python3 tests/test_core.py`，测试脚本退出码为 3。
+  - `python3 tests/test_core.py $'a\'b; #c'`：rc 3 → 0，**测试同样没执行**。
+  - `"${x:-"a;b"}"`、`${x:-a;b}`、`"$(printf "a;b")"`：rc 0 → 2，变成语法错误。
+  - 注意：load_profile 是按 hook 脚本自己的位置去找 `tools/project_profile.py` 的。所以基线副本要放在镜像目录 `mirror_base/{hooks,tools}` 里才会走画像路径；第一次我把基线放在 scratchpad 根目录跑，画像没生效，已改正。
+- **对照测试 compare.py 新增两组**：Codex 第 2 次复核新造的 30 条（原文照抄，其中 6 条 zsh- 开头的只在 zsh 下跑），以及我自查补的 17 条（S01–S17）。基线结果：
+  - bash：除 Codex 原 30 条外 **60/67 一致**，zsh：**66/73 一致**；
+  - 两个 shell 不一致的都是同样 7 条：C2-ansi-quote、C2-ansi-test-arg、S04（`"$(printf "a;b")"`）、S05（`` "`printf "a;b"`" ``）、S06（`"${x:-"a;b"}"`）、S07（`${x:-a;b}`）、S16（`${x` 没闭合）。
+  - 后 4 条是自查找到的同类问题："认不出来却照样改写"。
+- compare.py 本身修了一处：fallback 模式多了一行 mktemp 桩，stderr 里的行号会整体偏 1。现在只把行号归一后再比，内容仍须相同。之前 zsh 下 V1i 和 C2-case-fallthrough 的"不一致"都是这个原因。
+
+### 2. 改法（`split_segments`，原则是认不出来就整条放行）
+1. 命令里任何位置出现 `$'` 或 `$"`，整条放行。不管它是否在引号里，宁可少包装。
+2. **双引号内部**：遇到反引号、`$(`、`$[`，放行（这些结构里面还能再套引号，状态机认不出来）。遇到 `${`，按第 4 条处理。
+3. **引号外部**：遇到 `$[`（旧式算术），放行；`$(`、反引号、`()<>|&` 本来就放行。
+4. **`${…}`**（引号内外都一样）：找到第一个 `}`，中间如果含 `" ' `` ` `` $ \ { ( ) ; & | < >` 或换行，或者根本没有 `}`，就放行；否则整块原样照抄，块里的 `;`、`#` 不会被当成分隔符或注释。这样 `"${HOME}"`、`${#x}`、`${x%v}`、zsh 的 `${=x}` / `${a:#a}` 仍然能包装。
+
+### 3. 引号状态机自查（逐条路径）
+| 路径 | 处理 |
+|---|---|
+| 单引号 `'…'` | 里面没有转义，到下一个 `'` 结束，bash/zsh 都是这样，正确 |
+| 双引号里的 `\x` | 成对照抄，正确 |
+| 双引号里的 `` ` `` / `$(` / `$[` | **B5：放行** |
+| 双引号里的 `${…}` | **B5：按第 2 节第 4 条扫描，认不出来就放行** |
+| `$'…'` / `$"…"` | **B5：放行** |
+| 引号外的 `${…}` / `$[` | **B5：扫描或放行** |
+| 引号外的 `$(`、`` ` ``、`( ) < > \| &` | 原本就放行 |
+| 没闭合的引号、`[[`、`${` | 放行 |
+| 段尾剩奇数个 `\` | 放行（B4） |
+| 注释 `#` | 只在词首算（B4）；`${…}` 块里的 `#` 不会被误判 |
+
+剩下的不属于引号范畴：zsh 的保留字 `repeat`、`foreach` 不在 RESERVED 里。对照测试 zsh-repeat 结果一致，没有改坏，所以这次没动。
+
+### 4. 结果（全部实测）
+- **compare.py**（`scratchpad/r4B4/compare.py`）：
+
+  | | Codex 原 30 条 | B4 变体 26 条 | Codex 第 2 次 24+6 条 | 自查 17 条 |
+  |---|---|---|---|---|
+  | 基线 bash | 30/30 | 26/26 | 22/24 | 12/17 |
+  | **B5 bash** | **30/30** | **26/26** | **24/24** | **17/17** |
+  | 基线 zsh | 30/30 | 26/26 | 22/24 + 6/6 | 12/17 |
+  | **B5 zsh** | **30/30** | **26/26** | **24/24 + 6/6** | **17/17** |
+
+  B5 合计：bash 97/97，zsh 103/103（zsh 多出的是 6 条 zsh- 用例）。
+- **真实 hook 入口 + 真实 pytest + 画像路径**（`scratchpad/r4B4/entry_b5.py`，11 条命令 × bash/zsh = 22 次）：基线（镜像目录）**16/22 坏**，B5 **0/22 坏**。
+  - Codex 那两条：放行，rc 1→1、7→7；
+  - 正向对照 `"test_it's; #literal.py"`（普通双引号）、`"${HOME}" ${#HOME}`（画像路径）、`foo\ #lit`：都**仍然被包装**，rc 保持不变。
+  - 在 `hooks/` 原位置直接跑，结果也是 0/22 坏。
+- **回放** `python3 tools/replay/replay_test_filter.py`：**退出码 0**（基线也是 0）。19,951 条：改写 **82 条 / 99 次 → 82 条 / 99 次**，orig_ok_new_bad 改前改后都是 0，zsh_new_bad 改前改后都是 0。
+  - 另外逐条比了新旧 `rewrite()` 的输出：无画像时 19,951 条全部相同；用 py-proj 的画像（load_profile 实际加载成功）时，19,951 条也全部相同。
+- **I 的用例**：`profiles/test_project_profile.py` **33/33 通过**，其中 T01–T07 是 test_filter 接入的用例，T05 是"内置规则改写与 pre-r5I 逐字相同"。`tools/round5/I_adapt_matrix.py`：**21/21 格、329/329 子检查**，和改前一样。
+- **B2 的 67 条 harness**：0 条 RC-MISMATCH。唯一的变化是 `echo "$(date +%Y)"; pytest -q …` 从包装变成放行，因为双引号里有 `$(`。这是第 2 节第 2 条的保守代价；真实历史命令里没有一条因此变化。
+- **scorecard** `--version all`：当前版 **107/107**，不适用 0，TF 24/24；v0 20/58。按惯例重写了 scorecard.md 和 history 里今天的条目。
+
+### 5. 撤回
+- 撤回 B5，回到 B4 + R5I：`cd ~/Documents/Projects/claude-usage-saver; cp -p backups/test_filter.py.pre-r4B5 hooks/test_filter.py; python3 tools/replay/replay_test_filter.py; python3 tools/scorecard.py --version all`
+- 撤回到 Codex 复核过的 B4 版本（会同时去掉 I 的画像改动）：`cd ~/Documents/Projects/claude-usage-saver; cp -p backups/test_filter.py.pre-r5I hooks/test_filter.py`
+
+### 6. 疑虑
+- 放行条件偏保守：`$'`、`$"` 只要在命令里出现就放行，哪怕是在单引号里；双引号里的 `$(…)` 也一律放行，哪怕里面没有嵌套引号。实测对真实流量影响为 0，代价是以后这类命令里的测试不再省 token。
+- scorecard 里还没有这些场景，因为 scorecard 不归我。建议把 C2-ansi-*、S04–S07、entry_b5 的 A1 / B1 加成 TF25 以后的场景：A1 需要真实 pytest，可以像 TF24 那样借用 venv。
+- 我这边跑 scorecard 是 107/107；Codex 那边是 105/106，原因是 SR22 在它的沙箱里 `ps` 被拒绝，属于环境差异。

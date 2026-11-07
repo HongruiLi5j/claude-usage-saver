@@ -1,0 +1,8 @@
+任务：复核 T（第 6 轮，test_filter 修复，含 T2：丢 PASSED 进度行改计数、失败名去重、可见行数≤原来一半；以 round6_T.md「T2」节为准）。读 reports/round6_T.md。改动在 hooks/test_filter.py（改前 backups/test_filter.py.pre-r6T）和 profiles/test_project_profile.py 的 T05（改前 backups/test_project_profile.py.pre-r6T；请判断把"与旧备份逐字相同"改成"有/无画像改写结果逐字相同"是否合理，还是在放宽测试掩盖回归）。
+要点：
+1. R28：真实 pytest 300 个测试、25 个失败，确认改写后 25 个失败名和 E 行都在、退出码保留；超上限时提示"还有 N 个失败没显示，完整日志在 <路径>"且该路径真的存在、内容完整。
+2. 新改写范围：timeout/gtimeout 带选项、单行 `X && pytest`、`X; pytest`、`X || pytest`。在 bash 和 zsh 下用真实 pytest 对照：退出码、短路语义（X 失败时 && 不跑 pytest）、cwd、环境变量前缀（FOO=1 pytest）、前缀命令一个字符不变。自己造反例：引号里的 ; 和 &&、$(...)、反引号、管道已存在、后台 &、`cd dir && pytest`、`timeout --signal=KILL 5 pytest`、`pytest; echo done`（pytest 不是最后一段，不应改写）、heredoc、多行 [[（应放行不改）。
+3. 输出上限 16000 字节/单行 400 字符：最坏情况（400 个失败、每行 5000 字符、中文 UTF-8）确认 <30000 字节（Claude Code 超 30000 字节会落盘只给 2KB 预览）。
+4. 跑 tools/tests_r6T.py、tools/round5/K_testall.py、python3 tools/scorecard.py --version all、tools/replay/replay_test_filter.py（退出码 0）、profiles 测试。
+结论写在最后：通过 / 打回（列出必须修的问题）。
+5. T2 专项：-q -s 插件逐行进度、-v、-v -rA、xdist 的 "状态 nodeid" 格式：PASSED/SKIPPED/XFAIL 行全丢、FAILED 名只出现一次、每个失败有 E 行；jest/cargo/lake/go 输出与 T1 逐字节相同。纯 -q 无进度行时可见 60%（为保留带值的 E 行，所有者规则质量优先，可接受，不作为打回理由）。

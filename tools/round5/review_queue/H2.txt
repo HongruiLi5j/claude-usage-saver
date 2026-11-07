@@ -1,0 +1,3 @@
+任务：复核 H2（adapters/common/usaver_run.py 改为调用 hooks/test_filter.summarize；改前 backups/usaver_run.py.pre-r6H2、backups/test_adapters.py.pre-r6H2）。读 reports/round6_H2.md。
+请：1) 真实 pytest 300 测试/25 失败，-q 与 -v：25 个名字可见、E 行、rc 保留、<30000 字节；2) 保底：test_filter 缺失/无 summarize/抛异常/返回非字符串时退回旧逻辑且 rc 保留，单独拷走 adapters（无 hooks）不崩；3) 与 test_filter.py --summarize 输出逐字相同；4) 跑 adapters/tests/test_adapters.py（应 41 passed）和 tools/round5/K_testall.py。
+结论写在最后：通过 / 打回（列出必须修的问题）。

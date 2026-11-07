@@ -3,21 +3,49 @@
 
 statusline.sh 会 `import context_guard` 调 lines()，所以顶层只做定义，hook 入口在 main()（R4D/Codex 11：
 两边用同一套阈值算法，含项目覆盖、档位倍数、下限、Pro 封顶）。
+
+定位（R5I / 所有者定 CG13）：套件目录 = 本脚本所在目录的上一级（不写死 ~/Documents/Projects/…）；config.json 在
+套件目录；state 目录 = $USAGE_SAVER_STATE，没有就用 套件/state。statusline.sh 用同一规则，所以它写的 rate.json
+和这里读的是同一个文件。config.json 读不到或不是 JSON 对象时，往 stderr 打一行提示，然后全部用默认值。
+阈值优先级：项目覆盖（项目根的 .usage-saver.json 里 thresholds.soft_tokens / strong_tokens，经
+tools/project_profile.py 读取）> 套件 config（per_project_threshold_tokens 按目录名、再 handoff_threshold_tokens）
+> 默认值；之后再乘额度档倍数、套下限和 Pro 封顶。
+上下文窗口（R5I → R6M 改）：
+- 窗口来源依次是：hook payload 自带的 context_window_size → 状态栏按 session_id 记在 state/ctx_window.json 的值
+  → 模型 id 里显式写着 [1m] → 都没有时按保守的 20 万「假设窗口」。不按模型族名猜窗口。
+- 知道窗口：软线 ≤ 窗口 60%、强线 ≤ 窗口 80%（R6M；原来是 85% / 95%）。理由：Claude Code 大约在窗口 83% 处自动
+  压缩（20 万窗口约 16.7 万），强线放在 95% 永远等不到。比例可在 config 的 window_soft_ratio / window_strong_ratio 改。
+- 假设窗口（只在 transcript 里确实有模型名、但窗口不知道时才用）：强线 ≤ 80%，软线只收到 75%（猜的窗口不该把
+  真实是 100 万的会话提前打扰）；上下文已经超过假设窗口的 85% 还没被压缩，说明真实窗口更大，就不再按假设收紧。
+- transcript 里连模型名都没有（旧格式、合成数据、别的工具）且窗口不知道：不改阈值，和状态栏 payload 没给窗口时
+  调 lines(window=None) 的行为一致，两边判定不会对不上。
+- 读不到 usage（transcript 不存在、字段改名、全是 0、不是 Claude 的格式）时，在 mode.json 写 usage_unreadable=true
+  和原因 usage_why，不再静默；新会话还没有回复时不算读不到。
+
+CG11（所有者定，保持现状）：「快用完」档不看读数是否过期——任一未重置窗口的用量 ≥ near_limit_pct 就判「快用完」，
+即使读数已超过 rate_stale_seconds。理由：窗口内用量只增不减，旧读数是下限；只有窗口的 resets_at 已过才作废。
 """
 import json, sys, os, re, time, datetime as dt
-BASE = os.path.expanduser("~/Documents/Projects/claude-usage-saver")
-STATE = os.environ.get("USAGE_SAVER_STATE", BASE + "/state")
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATE = os.environ.get("USAGE_SAVER_STATE") or os.path.join(BASE, "state")
 try:
-    cfg = json.load(open(BASE + "/config.json"))
-except Exception:
+    cfg = json.load(open(os.path.join(BASE, "config.json")))
+    if not isinstance(cfg, dict):
+        raise ValueError("顶层不是 JSON 对象")
+except Exception as _e:
     cfg = {}
-if not isinstance(cfg, dict):
-    cfg = {}
+    try:
+        sys.stderr.write(f"[usage-saver] 读不到 {os.path.join(BASE, 'config.json')}（{type(_e).__name__}），全部用默认值\n")
+    except Exception:
+        pass
 WEEK = 7 * 24 * 3600
 DEFAULTS = dict(handoff_threshold_tokens=160000, strong_threshold_tokens=300000, min_threshold_tokens=100000,
                 max_soft_line_tokens=180000, max_strong_line_tokens=195000, rate_stale_seconds=6 * 3600,
                 near_limit_pct=90, headroom_rich_pts=10, headroom_tight_pts=5,
-                remind_every_tokens=50000, remind_every_prompts=10)
+                remind_every_tokens=50000, remind_every_prompts=10,
+                # R6M：按窗口比例收紧（见文件头）
+                window_soft_ratio=0.6, window_strong_ratio=0.8, assumed_window_tokens=200000,
+                assumed_soft_ratio=0.75, assumed_lift_ratio=0.85)
 TIERS = {"宽裕": 1.5, "正常": 1.0, "紧张": 0.75, "快用完": 0.6}
 
 
@@ -36,6 +64,22 @@ def num(key):
     """读数值配置；缺失或写错时回退默认值（R4D：配置写错不能让守卫整体静默失效）。"""
     v = _num(cfg.get(key))
     return float(DEFAULTS[key]) if v is None else v
+
+
+def ratio(key):
+    """读 0–1 之间的比例配置；缺失、写错或不在 (0, 1] 里时用默认值。"""
+    v = _num(cfg.get(key))
+    return v if v is not None and 0 < v <= 1 else float(DEFAULTS[key])
+
+
+def window_ratios(assumed=False):
+    """(软线比例, 强线比例)。配置写反了（软 ≥ 强）就整组回退默认，保证软线 < 强线。"""
+    rs = ratio("assumed_soft_ratio" if assumed else "window_soft_ratio")
+    rg = ratio("window_strong_ratio")
+    if rs >= rg:
+        rs = float(DEFAULTS["assumed_soft_ratio" if assumed else "window_soft_ratio"])
+        rg = float(DEFAULTS["window_strong_ratio"])
+    return rs, rg
 
 
 def tiers():
@@ -126,8 +170,38 @@ def cap_active(today=None):
     return (today or dt.date.today()) >= d, ""
 
 
+_PP = []
+
+
+def project_override(cwd):
+    """项目根 .usage-saver.json 里的 (soft, strong)，没有就 (None, None)。用 tools/project_profile.py 的轻量入口
+    （只找根、读覆盖文件，不遍历项目）；模块缺失或出任何错都返回 (None, None)。"""
+    try:
+        if not cwd:
+            return None, None
+        if not _PP:
+            mod = None
+            path = os.path.join(BASE, "tools", "project_profile.py")
+            if os.path.isfile(path):
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("usage_saver_project_profile", path)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+            _PP.append(mod)
+        if _PP[0] is None:
+            return None, None
+        t = _PP[0].project_thresholds(cwd)
+        return _num(t.get("soft_tokens")), _num(t.get("strong_tokens"))
+    except Exception:
+        return None, None
+
+
 def project_soft(cwd):
-    """项目软线：cwd 的某一级目录名等于键才算命中（R4D：quant-backtest-old 不再命中 quant-backtest）。"""
+    """项目软线。优先级：项目 .usage-saver.json > config 的 per_project（cwd 的某一级目录名等于键才算命中，
+    R4D：quant-backtest-old 不再命中 quant-backtest）> handoff_threshold_tokens > 默认。"""
+    ov = project_override(cwd)[0]
+    if ov:
+        return ov
     parts = os.path.normpath(cwd).split(os.sep) if cwd else []
     pp = cfg.get("per_project_threshold_tokens")
     if isinstance(pp, dict):
@@ -137,18 +211,70 @@ def project_soft(cwd):
     return num("handoff_threshold_tokens")
 
 
-def lines(cwd, mult, today=None):
-    """返回 (软线, 强线, 说明)。守卫和状态栏都调这一个函数。"""
+def lines(cwd, mult, today=None, window=None, assumed=False):
+    """返回 (软线, 强线, 说明)。守卫和状态栏都调这一个函数。
+    window：本会话上下文窗口（不知道就 None，不改阈值）。assumed=True 表示 window 是猜的（假设窗口），
+    软线只收到 assumed_soft_ratio；强线两种情况都收到 window_strong_ratio。"""
     mult = _num(mult) or 1.0
     soft = max(int(project_soft(cwd) * mult), int(num("min_threshold_tokens")))
-    strong = max(int(num("strong_threshold_tokens") * (mult if mult > 1 else 1)), soft + 50000)
+    base_strong = project_override(cwd)[1] or num("strong_threshold_tokens")
+    strong = max(int(base_strong * (mult if mult > 1 else 1)), soft + 50000)
     # D5：换回 Pro 后（cap_from_date 起）软线/强线封顶，Pro 在 20 万以上的行为未实测
     on, note = cap_active(today)
     if on:
         soft = min(soft, int(num("max_soft_line_tokens")))
         strong = min(strong, int(num("max_strong_line_tokens")))
         strong = max(strong, soft + 1)
+    w = _num(window)
+    if w and w >= 20000:
+        # R5I/R6M：不超过上下文窗口的一定比例，保证在自动压缩（约 83%）之前能看到强提醒
+        rs, rg = window_ratios(assumed)
+        if soft > w * rs or strong > w * rg:
+            what = f"窗口未知,按 {int(w) // 1000}k 假设收紧" if assumed else f"按上下文窗口 {int(w) // 1000}k 收紧"
+            note = (note + "," if note else "") + what
+        soft = min(soft, int(w * rs))
+        strong = max(min(strong, int(w * rg)), soft + 1)
     return soft, strong, note
+
+
+def _model_id(v):
+    """payload / transcript 里的模型：字符串，或 {"id": ...}；拿不到返回 ""。"""
+    if isinstance(v, dict):
+        v = v.get("id")
+    return v.strip() if isinstance(v, str) else ""
+
+
+def resolve_window(d, sid, model, n):
+    """本会话上下文窗口。返回 (窗口或 None, 来源, 是否假设)。来源：
+    payload / statusline / model-id（id 里写着 [1m]）/ assumed（猜 20 万）/ evidence（上下文已超过假设窗口的
+    assumed_lift_ratio 还没被压缩，真实窗口更大，不收紧）/ none（连模型名都没有，不改阈值）。"""
+    cw = d.get("context_window") if isinstance(d.get("context_window"), dict) else {}
+    for v in (cw.get("context_window_size"), d.get("context_window_size")):
+        if _num(v):
+            return _num(v), "payload", False
+    w = session_window(sid)
+    if w:
+        return w, "statusline", False
+    m = model.lower()
+    if "[1m]" in m:
+        return 1_000_000.0, "model-id", False
+    if not m or m == "<synthetic>":
+        return None, "none", False
+    aw = num("assumed_window_tokens") or float(DEFAULTS["assumed_window_tokens"])
+    if n > aw * ratio("assumed_lift_ratio"):
+        return None, "evidence", False
+    return aw, "assumed", True
+
+
+def session_window(sid):
+    """状态栏记下的本会话 context_window_size（state/ctx_window.json）；没有、过期（7 天）或出错返回 None。"""
+    try:
+        e = (json.load(open(os.path.join(STATE, "ctx_window.json"))) or {}).get(sid) if sid else None
+        if isinstance(e, dict) and time.time() - (_num(e.get("ts")) or 0) < 7 * 86400:
+            return _num(e.get("w"))
+    except Exception:
+        pass
+    return None
 
 
 # ---------------------------------------------------------------- 会话级提醒去重
@@ -213,48 +339,124 @@ def remind_kind(sid, n, soft, strong, now=None):
 
 
 # ---------------------------------------------------------------- hook 入口
-def last_usage(path):
+USAGE_KEYS = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+# 认识、但不算上下文的 usage 字段（R6M：其余带 token 的数字字段记进 mode.json 的 usage_unknown_fields，提示可能少算）
+USAGE_KNOWN_OTHER = ("output_tokens",)
+
+
+def _usage_total(u):
+    """一条 usage 的上下文 token 数（input + cache_read + cache_creation）；字段坏了按 0。"""
+    try:
+        return sum(int(_num(u.get(k)) or 0) for k in USAGE_KEYS)
+    except Exception:
+        return 0
+
+
+def scan_usage(path):
+    """从 transcript 尾部找主会话最后一条有效 usage。返回 (usage 或 None, 信息)。
+    信息：model（那条回复的模型名）、unreadable（读不到 usage 时 True）、why（原因）、unknown_fields。
+    不抛异常：任何出错都记成 unreadable（R6M：读不到 usage 不能静默）。"""
+    info = {"model": "", "unreadable": False, "why": "", "unknown_fields": []}
+    if not isinstance(path, str) or not path or not os.path.isfile(path):
+        info.update(unreadable=True, why="transcript 不存在或没给路径")
+        return None, info
     last = None
-    with open(path, "rb") as f:
-        f.seek(0, 2); size = f.tell()
-        # 先读尾部 400KB；最后几行是很大的 tool_result 时找不到 usage，就往回多读（CG08）
-        for win in (400_000, 4_000_000, 16_000_000):
-            f.seek(max(0, size - win))
-            for line in f.read().decode("utf-8", "ignore").splitlines():
-                if '"usage"' not in line:
-                    continue
-                try:
-                    o = json.loads(line)
-                except Exception:
-                    continue
-                if o.get("isSidechain"):
-                    continue          # 子 agent 的记录不算主会话上下文（R4D/Codex 14）
-                u = (o.get("message") or {}).get("usage") if o.get("type") == "assistant" else None
-                if u:
-                    last = u
-            if last or win >= size:
-                break
-    return last
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2); size = f.tell()
+            # 先读尾部 400KB；最后几行是很大的 tool_result 时找不到 usage，就往回多读（CG08）
+            for win in (400_000, 4_000_000, 16_000_000):
+                f.seek(max(0, size - win))
+                asst = with_usage = zero = foreign = 0
+                odd, unknown = set(), set()       # odd：usage 里完全没有认识的字段；unknown：多出来的 token 字段
+                for line in f.read().decode("utf-8", "ignore").splitlines():
+                    if '"usage"' not in line and '"assistant"' not in line:
+                        continue
+                    try:
+                        o = json.loads(line)
+                    except Exception:
+                        continue
+                    if not isinstance(o, dict) or o.get("isSidechain"):
+                        continue          # 子 agent 的记录不算主会话上下文（R4D/Codex 14）
+                    if o.get("type") != "assistant":
+                        if '"usage"' in line:
+                            foreign += 1  # 有 usage 但不是 Claude 的 assistant 记录（例如 Codex 的格式）
+                        continue
+                    asst += 1
+                    msg = o.get("message") if isinstance(o.get("message"), dict) else {}
+                    u = msg.get("usage")
+                    if not isinstance(u, dict):
+                        continue
+                    with_usage += 1
+                    if not any(_num(u.get(k)) is not None for k in USAGE_KEYS):
+                        odd.update(str(k) for k in u)
+                        continue
+                    for k, v in u.items():
+                        if "token" in str(k) and k not in USAGE_KEYS + USAGE_KNOWN_OTHER and _num(v) is not None:
+                            unknown.add(str(k))
+                    # R5I：API 报错时写进来的 usage 全是 0（本机 transcript 有 77 条）——跳过，用前面最近一条有效的；
+                    # 否则 n=0 会漏发提醒，还会把本会话的去重记录清掉（回到软线以下的分支）
+                    if _usage_total(u) > 0:
+                        last = u
+                        info["model"] = _model_id(msg.get("model"))
+                    else:
+                        zero += 1
+                if last or win >= size:
+                    break
+    except Exception as e:
+        info.update(unreadable=True, why=f"读 transcript 出错（{type(e).__name__}）")
+        return None, info
+    if last:
+        if unknown:
+            info["unknown_fields"] = sorted(unknown)
+            info["why"] = "usage 里有不认识的 token 字段 %s,上下文可能少算" % ",".join(sorted(unknown))
+        return last, info
+    if odd:
+        info.update(unreadable=True, why="usage 字段名不认识（%s）" % ",".join(sorted(odd)[:6]))
+    elif zero:
+        info.update(unreadable=True, why="usage 全为 0（API 报错记录）")
+    elif asst and not with_usage:
+        info.update(unreadable=True, why="assistant 记录里没有 usage 字段")
+    elif foreign:
+        info.update(unreadable=True, why="有 usage 但不是 Claude assistant 记录的格式")
+    else:
+        info["why"] = "还没有带 usage 的回复（新会话）"
+    return None, info
+
+
+def last_usage(path):
+    """旧接口：只返回 usage（找不到返回 None）。"""
+    return scan_usage(path)[0]
 
 
 def main():
     try:
         d = json.load(sys.stdin)
+        if not isinstance(d, dict):
+            return
         cwd = d.get("cwd") or ""
+        sid = d.get("session_id")
         mode, mult, why = get_mode()
-        limit, strong, note = lines(cwd, mult)
+        last, info = scan_usage(d.get("transcript_path"))
+        n = _usage_total(last) if last else 0
+        model = info.get("model") or _model_id(d.get("model"))
+        win, src, assumed = resolve_window(d, sid, model, n)
+        limit, strong, note = lines(cwd, mult, window=win, assumed=assumed)
         if note:
             why += "," + note
         try:
             # 调试用：属于最后一次提交消息的会话（statusline 只读其中的 mult）
             _atomic_write(STATE + "/mode.json", {"ts": int(time.time()), "mode": mode, "mult": mult, "why": why,
-                                                 "soft_line": limit, "strong_line": strong})
+                                                 "soft_line": limit, "strong_line": strong,
+                                                 "window": int(win) if win else None, "window_source": src,
+                                                 "model": model or None, "ctx_tokens": n if last else None,
+                                                 "usage_unreadable": bool(info.get("unreadable")),
+                                                 "usage_why": info.get("why") or "",
+                                                 "usage_unknown_fields": info.get("unknown_fields") or []})
         except Exception:
             pass
-        last = last_usage(d.get("transcript_path"))
         if not last:
             return
-        n = last.get("input_tokens", 0) + last.get("cache_read_input_tokens", 0) + last.get("cache_creation_input_tokens", 0)
         try:
             kind = remind_kind(d.get("session_id"), n, limit, strong)
         except Exception:

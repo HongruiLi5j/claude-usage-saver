@@ -1,0 +1,9 @@
+任务：这次是讨论，不是复核。所有者新目标：在不降低质量的前提下，额度消耗节约 50%。请独立给出"最可能达到 50%"的方案（按预计节省排序，标出估算还是实测、风险、怎么验证）。主会话 Claude 也会独立写一份，最后对照。不要读 reports/round7_goal50_claude.md。
+所有者规则：质量优先，会降质量的不采用；11-21 从 Max 换回 Pro。所有者是数学系学生，主要用 Claude Code 做量化回测、Lean 证明、作品集代码、实习投递自动化。
+实测数据（reports/weekly_20261107.md，Sonnet 5.5 当量；Opus 5.5 = 2× Sonnet 定价）：
+- 启用后 Opus 占成本 93%（改动前 67%）；每次请求成本 33.3k = cache read 11.6 + cache write 10.5 + output 11.2。
+- 最近窗口：main·opus 635 次请求×31.7k；sub·opus 2017 次×37.2k；main·sonnet 168×14.1k；sub·sonnet 244×19.9k。改动前：main·opus 8582×51.6k，main·sonnet 10050×18.2k。
+- F2 受控基准（reports/round5_F2_bench.md）：套件 B 对 A R=1.008（无差别，任务太容易，质量碰到天花板）；Opus effort medium 对 high：R=0.957，output −13%。今晚长测试输出任务 B 比 A 便宜 36%。
+- 已做：关 Artifact（每会话 −13.4k）、autoCompactWindow=300000、test_filter、context_guard 软线 140k–160k。
+- 官方资料（reports/round5_research.md 第 1 节）：advisor 工具（Sonnet 主模型 + Opus advisor，官方称通常比全程强模型便宜，实验功能）；Concise 输出风格；effort；子 agent 模型；1h/5min 缓存 TTL。
+请回答：1) 50% 是否可达、靠哪几项、各自上限；2) 哪些会伤质量、怎么在 F2（tools/bench/token_bench.py，可加 arm）里测出质量差异——需要什么样的难题；3) 一个能在 1 个 5h 窗口内跑完的验证实验设计（arm、任务、次数）。用中文，最后给一张表。

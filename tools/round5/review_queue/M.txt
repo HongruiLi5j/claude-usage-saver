@@ -1,0 +1,4 @@
+任务：复核 M（第 6 轮：适应新模型）。读 reports/round6_M.md。改动文件：hooks/context_guard.py（备份在 backups/context_guard.py.20261106-2335.pre-r6M，可以 diff 对照）、~/.claude/skills/model-router/SKILL.md（备份在 backups/model-router.SKILL.md.20261106-2335.pre-r6M，只读）、新测试 tools/tests_r6M.py。
+实跑：tools/tests_r6M.py、tools/round5/K_testall.py、tools/round5/I_adapt_matrix.py、profiles/test_project_profile.py、tools/scorecard.py --version all。另外自己造输入测 context_guard：窗口 200k/300k/1M/缺失/非法值（0、负数、字符串），未知模型名（例如 claude-zeta-9），usage 字段缺失或改名，Pro 封顶日期前后（2026-11-21），上下文 170k 时没压缩的大窗口推断，并发写 mode.json。重点检查：1M 窗口的 Max 日常会话行为是否和改前完全一致（不能多提醒，也不能漏提醒）；读不到 usage 时有没有静默失效；hook 延迟。
+SKILL.md 检查：K3 公式是否合理（缓存写 1.25×，缓存读 0.1×，5 分钟 TTL）；别名表和档位描述有没有和实际可用的 Agent 模型参数（sonnet/opus/haiku/fable）矛盾的地方。
+结论写在最后：通过 / 打回（列出必须修的问题）/ 需所有者决定。

@@ -19,8 +19,10 @@ The biggest lever is therefore **context length**: hand off and `/clear` early, 
 | `hooks/context_guard.py` | UserPromptSubmit | Reads the last request's real token usage from the transcript. Past a threshold, it asks Claude to write a handoff file and tell the user to `/clear`. The threshold adapts to remaining weekly quota (plentiful / normal / tight) and to the project. |
 | `hooks/session_resume.py` | SessionStart (`clear`) | After `/clear`, injects the project's `HANDOFF.md` plus an automatic digest of the previous transcript: owner messages, Claude's last replies, files edited. Any short follow-up like "1" or "ok" then continues the work. |
 | `hooks/test_filter.py` | PreToolUse (Bash) | Rewrites test commands so Claude only sees failures and errors. The full log is saved to a file. Exit codes are preserved. |
-| `hooks/statusline.sh` | statusLine | Shows context size, quota tier and a ⚠ warning before the threshold. |
-| `tools/weekly_compare.py` | report | Weekly comparison of cost per request, split by main session vs. subagent and by model. Weights 1h cache writes at 2× and 5m cache writes at 1.25×. |
+| `hooks/statusline.sh` | statusLine | Shows context size (and window), quota tier, a ⚠ warning before the threshold, and the savings meter (`省≈X%累计 本会话Y%(估·上限)`, see below). Appends quota readings to `state/rate_history.jsonl` when they change. Shared state files are written under a lock with atomic rename. |
+| `hooks/savings_meter.py` | used by statusline | Savings meter: per-event counterfactual log in `state/savings.jsonl`. See "Savings meter" below. |
+| `tools/pricing.py` | shared | Price table by model family/version from Anthropic's pricing page (2026-11-06). Converts usage to "Sonnet 5.5 equivalent tokens" (= API USD ÷ $2/MTok, so Opus 5.5 counts 2×). Unknown models are priced as the family's latest model or as Sonnet 5.5, and always flagged. |
+| `tools/weekly_compare.py` | report | Weekly comparison of cost per request, split by main session vs. subagent and by model family (built from the families actually present). Reports both "own-model units" and Sonnet 5.5 equivalents, using `tools/pricing.py` (cache reads are 0.05× input on the 5.5 models, 0.1× on older ones). Cost per day counts only complete local days; partial edge days are listed and excluded. |
 | `tools/usage_report.py` | report | Usage breakdown by model, project, day and session. |
 | `tools/scorecard.py` | regression | 50 fixed scenarios, run against the initial version and the current version (see below). |
 | `tools/replay_guard.py`, `tools/bench/` | experiments | Replays real transcripts to simulate the guard; paired Opus-vs-Sonnet benchmark runs. |
@@ -50,6 +52,18 @@ Every change goes through an independent reviewer (Codex) that reruns the eviden
 
 Earlier claims withdrawn after review: "−21% per request on day one" and "Sonnet saves 50% of quota" (see `reports/round2_review_BD.md`). The round-1 "313 → ~30 lines" test-output figure (n = 1) and the simulated context-guard estimate have been superseded by the measured numbers above.
 
+### Savings meter (round 6)
+
+The status line shows `省≈X%累计 本会话Y%(估·上限)`: estimated savings ÷ (actual cost + estimated savings), cumulative and for this session, in Sonnet 5.5 equivalent tokens. `usaver-status` shows the same number (it only reads `state/savings.jsonl`).
+
+- **Only mechanisms with a direct counterfactual are counted.** `test_filter`: the tokens it cut, compared with what Claude Code itself would have shown (the full log up to ~30k characters; above that Claude Code saves the output to a file and shows a ~2k-character preview). Each cut token is charged at the cache-write price on the next request, then at the cache-read price on each later request (write price again when the cache was cold), until compaction or `/clear`. This can be negative, and it is recorded as negative.
+- **Settings with a measured fixed-prefix saving (round 6 P2).** Today: `enableArtifact: false` (set by the owner on 2026-11-06 23:42 PST). Round 5 A measured the first request of a fresh interactive session at −13,421 tokens (main) and −13,140 (subagent). For every request made after 2026-11-07T07:42Z whose tool list — taken from the `api-request-shape` records Claude Code writes into the transcript — has no `Artifact` but would otherwise have had it (main thread: interactive tool set, i.e. `AskUserQuestion` present; subagent: has `Write`/`Edit`, so read-only agents such as Explore are excluded), the meter adds Δ × that request's price for the prefix: cache-write price (1.25× / 2×) when the prefix was written (cache read < 4,096 tokens), cache-read price otherwise, input price when no cache was used. Requests without a shape record are not counted. Δ, the start time, and on/off can be overridden in `config.json` under `savings_meter.settings.artifact_off` (changing Δ takes effect at once; changing the start time or turning it off recomputes every session and appends revoke rows — `counted: false`, saved 0 — for events that are no longer produced, so the ledger and `usaver-status` follow the status line); other measured settings plug into the same registry (`SETTING_SAVINGS` / `register_setting` in `hooks/savings_meter.py`).
+- **Ledger consistency (P2).** A ledger row is appended whenever a value changes (at the ledger's 0.1 precision), so `usaver-status` and the status line agree. `rev` is a millisecond timestamp, so rebuilding a lost progress file cannot leave the ledger on an old value. Each refresh also catches up, at most every 30 s and for ≤12 ms, other recently seen sessions whose transcript grew after their last refresh. `python3 hooks/savings_meter.py --session-end` does the same for one session from a SessionEnd hook payload (not installed; it would need a change to `~/.claude/settings.json`).
+- **Always shown.** The segment is shown even at 0.0%. `usaver-status` shows it whenever `state/savings.jsonl` exists, and adds a per-mechanism breakdown (percentage points of the cumulative total).
+- **Not counted:** the context guard's `/clear` is shown only as an estimate range [0, upper bound] in `savings.jsonl` (`counted: false`). In the F2 benchmark the upper bound was 12.2% on the long-context task, while the measured A/B difference was 2.7%, so the upper bound overstates by about 4×. Early compaction, model routing and session resume are not estimated.
+- **This is an upper-bound estimate per mechanism, not an A/B measurement** (the Artifact part is a measured Δ times the price of each request, which is closer to a point estimate). Calibration against the F2 benchmark (`reports/round6_P.md`): the meter reports 0.00% for arm B (test_filter never fired), and F2 measured no significant difference (R = 1.008, 95% CI 0.970–1.048). On the owner's real transcripts up to 2026-11-06, `test_filter` fired twice, both on short logs, for a net of −338 tokens (≈ 0%).
+- Set `USAGE_SAVER_METER=0` to turn the meter off.
+
 ## Install
 
 The hooks are registered in `~/.claude/settings.json`. Paths currently assume the repo lives at `~/Documents/Projects/claude-usage-saver`. Thresholds are in `config.json`. See `使用说明.md` for the user guide (in Chinese).
@@ -57,3 +71,34 @@ The hooks are registered in `~/.claude/settings.json`. Paths currently assume th
 ## Status
 
 Personal project, work in progress (November 2026). Not affiliated with Anthropic.
+
+## Using with other AI coding tools
+
+The hooks above are Claude Code specific. `adapters/` holds the parts that work with Codex CLI, Gemini CLI, Cursor, Aider and similar tools. Details and measurements are in `reports/round5_H.md` (Chinese), and the machine-readable compatibility matrix is `adapters/matrix.json`.
+
+| Piece | What it does | Works with |
+|---|---|---|
+| `adapters/bin/usaver-run` | `usaver-run pytest -q`: runs any command, saves the full log, and prints only the failures and the tail. Exit code is preserved, and `USAGE_SAVER_RAW=1` gives raw output. Same rules as `hooks/test_filter.py`. | Anything that can run a shell command. For Aider: `--test-cmd "usaver-run pytest -q"`. |
+| `adapters/agents/AGENTS.usage-saver{,.lite}.md` | Token-saving rules for the agent: use `usaver-run`, read narrowly, hand off through `HANDOFF.md`. The handoff format is the one `session_resume` parses, so a handoff written by Codex is picked up by Claude Code. | Codex (`AGENTS.md`), Cursor (`AGENTS.md`), Gemini (`GEMINI.md`, or set `context.fileName`), Aider (`--read CONVENTIONS.md`) |
+| `adapters/codex/codex_usage.py` | Per-request token usage from `~/.codex/sessions` rollout logs (`.jsonl` and `.jsonl.zst`), in the same cost units as `tools/weekly_compare.py`. Also reports the 5-hour and 7-day quota readings. It excludes `/tmp` benchmark sessions and Claude sessions that Codex Desktop imported. | Codex CLI / Codex Desktop |
+| `adapters/bin/usaver-status` | A one-line live status in the same format as `hooks/statusline.sh`, for example `gpt-6.1-sol \| ctx 22k/475k \| 5h 95% \| 7d 27%`. It auto-detects the most recent Codex or Claude Code session in the current directory and uses the kit's thresholds. When the model's context window is known, it also caps the warning lines at 60% / 80% of that window, and it predicts when the 5-hour window will run out. Use `--watch` in a spare pane, or put it in tmux `status-right` or a zsh `RPROMPT`. | Codex, Claude Code |
+| `adapters/apply.py` | Applies and reverts the above with one command each. Every change is backed up, and nothing is deleted. | — |
+| `adapters/skills_sync.py` | Generates per-tool copies of the kit's skills (`model-router`, `handoff`) from the single source in `~/.claude/skills`, for example into `~/.agents/skills` for Codex. Kit paths are resolved at run time, and `check` detects copies that are stale or were overwritten. Codex Desktop's own importer had replaced every "Claude" with "Codex", which broke paths. | Codex (`~/.agents/skills`) |
+
+```sh
+python3 adapters/apply.py bin link                                   # usaver-run + usaver-status into ~/.local/bin
+python3 adapters/apply.py agents apply --variant lite                # rules block into ~/.codex/AGENTS.md
+python3 adapters/apply.py agents apply --target ~/.gemini/GEMINI.md  # same block for Gemini CLI
+python3 adapters/apply.py agents revert; python3 adapters/apply.py bin unlink   # undo
+python3 adapters/codex/codex_usage.py --days 7                       # Codex usage report
+python3 adapters/skills_sync.py plan                                 # read-only: are ~/.agents/skills copies current?
+python3 -m pytest -q adapters/tests/test_adapters.py                 # offline tests (36)
+```
+
+Honest numbers (measured on one machine, small n):
+
+- Codex already truncates each tool output on its own (a model-chosen `max_output_tokens`, median 5000). In a live paired run, `usaver-run` cut the test output from 7158 to 771 tokens, but total input was almost unchanged.
+- The full rules block costs about 677 tokens per request.
+- On this owner's Codex history, the estimated net effect is about −0.4% for the full block and about +0.1% for the lite block. Use the lite block, and keep the full one for test-heavy projects.
+- For other tools, the main value is visibility (usage and status), not savings.
+- Gemini CLI, Cursor and Aider were not installed here. Their entries are based on documentation only.

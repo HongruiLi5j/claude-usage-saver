@@ -1,0 +1,8 @@
+任务：这次是讨论，不是复核。请给所有者推荐 3 个决定的最优解，每个给一个推荐和理由。主会话 Claude 已独立写了一份方案（不要读 reports/round6_T_decide_claude.md，等你写完后两边对照）。
+所有者规则：质量优先，会降质量的不采用，"持平"可接受；11-21 从 Max 换回 Pro，额度会变紧。
+材料（只读）：reports/round6_T.md（尤其"额外发现"和第 5 节）、hooks/test_filter.py、adapters/common/usaver_run.py、reports/round5_H.md。
+实测数据（主会话统计 transcript 元数据）：Claude Code 2.1.319 单次工具输出 >30000 字节就落盘，模型只看到开头 2KB。transcript 里落盘 94 次，全部来自 Bash，平均 104KB、中位 39KB；之后 49 次不再调工具，5 次 Read 读落盘文件，37 次再跑 Bash（26 次带 tail/head/grep/sed 过滤，19 次和原命令开头相同）。
+Q1：test_filter 摘要预算 SUM_BYTES=16000、行数 120+4×失败数（上限 300）要不要调？（注意 T 正在修：PASSED 进度行会被丢掉改为计数）
+Q2：adapters/common/usaver_run.py（Codex/Gemini 用）还是旧的 grep -B2 -A12 | head -120，有同样的丢失败名问题，要不要换成 test_filter.summarize？怎么换最稳？
+Q3：其它大输出（非测试命令）落盘只给 2KB 预览，要不要做一个"超过 30000 字节时保留开头+结尾"的通用 hook？还是只加规则，或者什么都不做？请估算收益量级和改坏命令的风险。
+可以在工作目录里做小实验（比如对 usaver_run.py 做原型并跑 H 的离线测试），但不要改项目目录。最后用中文给：每题的推荐（一句话）+ 理由 + 你不确定的地方。

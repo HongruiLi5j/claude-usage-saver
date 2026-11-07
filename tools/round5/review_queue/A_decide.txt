@@ -1,0 +1,24 @@
+任务：给所有者推荐“压缩固定开销”的最优方案。这次是讨论，不是复核：请独立判断，给出一个推荐和理由。主会话 Claude 也会独立给一个方案，最后两边对照。
+
+材料（绝对路径，只读）：/Users/lihongrui/Documents/Projects/claude-usage-saver/reports/round5_A.md、/Users/lihongrui/Documents/Projects/claude-usage-saver/tools/round5/A_apply.py；A 的复核结论在 /Users/lihongrui/Documents/Projects/claude-usage-saver/reports/codex_r5rev_A.md 末尾（只读，别对真实 ~/.claude/settings.json 执行任何东西）。
+
+所有者的规则：质量优先，会降低质量的优化一律不采用，“持平”可以接受。所有者 11-21 从 Max 换回 Pro，额度会变紧。所有者是数学系学生，准备 MFE，以后可能要处理 Excel/PDF 类作业；会用 Chrome 扩展自动投实习（有独立的 claude-in-chrome skill，另外 anthropic-skills:chrome-browser 被自动加载过 10 次）。
+
+实测数据（主会话刚从 1122 个 transcript 统计的）：
+- Artifact 工具：0 次发布；4 次 read、1 次 quickstart，分布在 3 个会话里。Claude Docs 连接器调用 2 次。
+- anthropic-skills：chrome-browser 被模型自动加载 10 次，docs 2 次，deep-research 由所有者手动输入 1 次；pdf/docx/xlsx/pptx/google-workspace/computer-use/built-in-browser/morning/import-memory/skill-creator 都是 0 次。
+- A 的实测：enableArtifact:false 使每个会话和子 agent 的首请求少约 13.1–13.4k token；13 个 skill 设成 user-invocable-only 后少 3.1–3.2k，平均每个约 240 token。skillOverrides 可以逐个 skill 设置。
+
+候选方案：
+O1 core：关 Artifact，13 个 skill 全部隐藏
+O2 只关 Artifact
+O3 关 Artifact，隐藏 11 个，保留 chrome-browser 和 docs（或你认为应该保留的其它组合）
+O4 别名模式：不改 settings.json，用 alias claude='claude --settings <精简文件>'，要完整功能时用 command claude
+O5 什么都不改
+
+请回答：
+1. 固定开销在会话里是缓存的（第一次缓存写 1.25×，之后每次请求按缓存读 0.1×）。按这个算，A 估的每周 23–45M 是否合理？给出你自己的估计（标明是估算）。
+2. 每个方案的质量风险。尤其是：隐藏 chrome-browser 会不会影响自动投递；隐藏 pdf/xlsx 后，模型处理这类文件时会差多少（模型本来就能直接读 PDF）；关 Artifact 会失去什么。
+3. 别名模式的实际坑：子 agent、无头 -p、henchmen、IDE/桌面版会不会都用上 alias；有没有入口绕过 alias。
+4. 你的最终推荐（一个方案，可以是上面的组合或变体），以及撤回办法。
+最后用中文写结论段：推荐方案 + 三条理由 + 主要风险。

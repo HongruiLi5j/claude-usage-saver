@@ -1,0 +1,3 @@
+任务：复核 H3（H2 被你打回后的修复：adapters/common/usaver_run.py 短日志绕过字节上限）。读 reports/round6_H2.md「H3」节；改前 backups/usaver_run.py.pre-r6H3、backups/test_adapters.py.pre-r6H3。再打回需说明真实影响。
+请：1) 重跑你的 /private/tmp/claude-501/codexws/r6rev_H2/reproduce_short.py；2) 正常短日志仍原样输出；中文长断言走摘要且第二个失败在开头 2000 字节内、rc 保留；3) 注意 H3 顺带改了"没有 test_filter 时旧规则也截到每行 400 字符"，请判断是否安全（不丢失败名/不改 rc）；4) 跑 adapters/tests/test_adapters.py（应 44 passed）、tools/round5/K_testall.py。
+结论写在最后：通过 / 打回（列出必须修的问题）。
