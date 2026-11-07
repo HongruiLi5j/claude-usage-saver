@@ -38,7 +38,11 @@ The kit is improved in rounds, each run by several agents with different models:
 - `reports/improvements.md`: every change with before / after / gain / how it was measured. Simulated results are kept separate from measured ones.
 - `reports/scorecard.md`: regression pass rate, initial version vs. current version.
 
-### Honest numbers so far (updated 2026-11-06, after round 4)
+### Bottom line (updated 2026-11-07, after round 7)
+
+**Measured saving for an ordinary conversation: about 0%, not statistically significant.** Controlled benchmark (10 tasks x with/without kit x 2 runs, Sonnet, medium scale, not a formal A/B): cost ratio R = 0.984 (95% CI 0.941-1.029); token-volume ratio 0.920. Real-use cost per request 34.8k -> 33.3k (-4%, one full day of data, trend only). Clear wins only in two niches (n=2 each): long unpiped test output -36%, large-context many-small-edits about -16%. Quality did not drop: 0 broken commands in a 19,951-command replay, blind tests 59/60 and 65/65. Roughly 93% of the usage after enabling went into developing the kit itself. The earlier "-33%" below is **not** attributable to the kit. Full report: `reports/final_report_round7.md`.
+
+### Earlier numbers (2026-11-06, after round 4)
 
 | Metric | Value | Confidence |
 |---|---|---|
